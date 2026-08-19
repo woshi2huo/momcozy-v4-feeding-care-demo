@@ -7,6 +7,8 @@
   --accent: #8f0027;
   --green: #08784b;
   --canvas: #f3f2f1;
+  --device-width: 402;
+  --device-height: 874;
 }
 
 * { box-sizing: border-box; }
@@ -31,7 +33,10 @@ button:disabled { cursor: default; opacity: .35; }
 .tool-button svg { width: 17px; height: 17px; }
 
 .device-stage { min-height: calc(100vh - 64px); display: grid; place-items: start center; padding: 28px 18px 48px; background: #ebeae9; }
-.screen-frame { position: relative; width: min(100%, calc(var(--screen-width) * 1px)); aspect-ratio: var(--screen-width) / var(--screen-height); overflow: hidden; border-radius: min(44px, 10.5%); background: #fff; box-shadow: 0 22px 70px rgba(29,22,26,.2); }
+.screen-frame { position: relative; width: min(100%, calc(var(--device-width) * 1px)); aspect-ratio: var(--device-width) / var(--device-height); overflow: hidden; border-radius: min(44px, 10.5%); background: #fff; box-shadow: 0 22px 70px rgba(29,22,26,.2); }
+.screen-scroll { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.screen-scroll::-webkit-scrollbar { display: none; }
+.screen-canvas { position: relative; width: 100%; aspect-ratio: var(--content-width) / var(--content-height); background: #fff; }
 .figma-screen { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; }
 .hotspot-layer { position: absolute; inset: 0; }
 .hotspot { position: absolute; left: calc(var(--x) * 1%); top: calc(var(--y) * 1%); width: calc(var(--w) * 1%); height: calc(var(--h) * 1%); padding: 0; border: 0; border-radius: 999px; background: transparent; }
@@ -43,6 +48,11 @@ button:disabled { cursor: default; opacity: .35; }
 .volume-value.left { left: 8.2%; }
 .volume-value.right { left: 59.5%; }
 .volume-value small { align-self: flex-end; margin-bottom: 10px; font-family: Inter, ui-sans-serif, sans-serif; font-size: 12px; }
+.hold-to-finish { position: absolute; z-index: 5; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); left: 16px; height: 52px; overflow: hidden; padding: 0; border: 0; border-radius: 999px; color: #fff; background: var(--accent); box-shadow: 0 8px 24px rgba(102,0,28,.22); font-size: 15px; font-weight: 650; touch-action: none; user-select: none; }
+.hold-to-finish::before { position: absolute; inset: 0; content: ""; background: #5f001b; transform: scaleX(0); transform-origin: left; transition: transform 1.2s linear; }
+.hold-to-finish.holding::before { transform: scaleX(1); }
+.hold-to-finish span { position: relative; z-index: 1; }
+.hold-to-finish:focus-visible { outline: 3px solid #1570ef; outline-offset: -3px; }
 
 .launcher { min-height: 100vh; padding: 28px clamp(18px, 4vw, 64px) 64px; background: #f7f6f5; }
 .launcher-header { max-width: 1180px; margin: 0 auto 30px; display: flex; align-items: end; justify-content: space-between; gap: 24px; }
@@ -60,7 +70,7 @@ button:disabled { cursor: default; opacity: .35; }
 .demo-heading span { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .demo-heading a { color: var(--accent); font-size: 12px; text-decoration: none; }
 .demo-heading a:hover { text-decoration: underline; }
-.demo-column iframe { display: block; width: 100%; height: 1120px; border: 1px solid var(--line); border-radius: 8px; background: #eee; }
+.demo-column iframe { display: block; width: 100%; height: 1040px; border: 1px solid var(--line); border-radius: 8px; background: #eee; }
 
 .toast { position: fixed; z-index: 100; left: 50%; bottom: 24px; max-width: calc(100% - 32px); padding: 11px 16px; transform: translate(-50%, 18px); border-radius: 6px; color: #fff; background: #211d20; box-shadow: 0 10px 30px rgba(0,0,0,.2); font-size: 12px; opacity: 0; pointer-events: none; transition: .2s ease; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
@@ -72,7 +82,7 @@ button:disabled { cursor: default; opacity: .35; }
   .launcher-actions .version { display: none; }
   .text-button { width: 38px; padding: 0; justify-content: center; font-size: 0; }
   .demo-grid { grid-template-columns: 1fr; gap: 30px; }
-  .demo-column iframe { height: 1040px; }
+  .demo-column iframe { height: 1000px; }
 }
 
 @media (max-width: 440px) {

@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.3";
+const VERSION = "0.3.4";
 const STORAGE_KEY = `momcozy-figma-755-demo-v3-${ENTRY}`;
 
 const hospitalScreens = [
@@ -47,6 +47,8 @@ const defaults = {
 
 let state = loadState();
 let transitionTimer = null;
+let holdTimer = null;
+let holdTarget = null;
 
 function loadState() {
   try {
@@ -68,6 +70,29 @@ function setState(patch, message) {
   saveState();
   render();
   if (message) showToast(message);
+}
+
+function cancelHold() {
+  clearTimeout(holdTimer);
+  holdTimer = null;
+  if (holdTarget) {
+    holdTarget.classList.remove("holding");
+    holdTarget.setAttribute("aria-pressed", "false");
+  }
+  holdTarget = null;
+}
+
+function startHold(target) {
+  if (holdTimer) return;
+  holdTarget = target;
+  target.classList.add("holding");
+  target.setAttribute("aria-pressed", "true");
+  holdTimer = setTimeout(() => {
+    const action = target.dataset.holdAction;
+    holdTimer = null;
+    holdTarget = null;
+    handleAction(action, target);
+  }, 1200);
 }
 
 function showToast(message) {
@@ -123,8 +148,7 @@ function hospitalHotspots(screen) {
       return hotspot("hospital-open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
     case "pump-control":
       return hotspot("hospital-start-pump", "开始吸乳", 6.3, 91.2, 87.4, 5.6);
-    case "pump-running":
-      return hotspot("hospital-finish-pump", "完成本次吸乳", 23.0, 11.2, 54.0, 15.5);
+    case "pump-running": return "";
     case "pump-finished":
       return [
         hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
@@ -158,7 +182,7 @@ function homeHotspots(screen) {
         hotspot("start-pump", "开始吸乳", 6.3, 91.2, 87.4, 5.6),
         hotspot("home-device", "返回设备页", 3.5, 4.3, 9.0, 4.8)
       ].join("");
-    case "pumping": return hotspot("finish-pump", "完成本次吸乳", 23.0, 11.2, 54.0, 15.5);
+    case "pumping": return "";
     case "finished": return hotspot("save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2);
     case "logged": return hotspot("show-dashboard", "查看吸乳数据", 0, 0, 100, 100);
     case "dashboard":
@@ -182,9 +206,18 @@ function screenMarkup(kind) {
   const volumes = kind === "hospital" && screen.id === "pump-finished"
     ? `<span class="volume-value left" aria-live="polite">${state.leftVolume}<small>ml</small></span><span class="volume-value right" aria-live="polite">${state.rightVolume}<small>ml</small></span>`
     : "";
-  return `<div class="screen-frame" style="--screen-width:${screen.width};--screen-height:${screen.height}">
-    <img class="figma-screen" src="./assets/figma-755/${screen.image}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
-    <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
+  const finishAction = screen.id === "pump-running" ? "hospital-finish-pump" : screen.id === "pumping" ? "finish-pump" : "";
+  const holdControl = finishAction
+    ? `<button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to finish</span></button>`
+    : "";
+  return `<div class="screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}">
+    <div class="screen-scroll">
+      <div class="screen-canvas">
+        <img class="figma-screen" src="./assets/figma-755/${screen.image}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
+        <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
+      </div>
+    </div>
+    ${holdControl}
   </div>`;
 }
 
@@ -222,6 +255,7 @@ function launcher() {
 
 function render() {
   clearTimeout(transitionTimer);
+  cancelHold();
   const app = document.getElementById("app");
   app.innerHTML = ENTRY === "launcher" ? launcher() : prototypePage(ENTRY);
   if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
@@ -289,6 +323,29 @@ document.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || target.disabled) return;
   handleAction(target.dataset.action, target);
+});
+
+document.addEventListener("pointerdown", (event) => {
+  const target = event.target.closest("[data-hold-action]");
+  if (!target) return;
+  target.setPointerCapture?.(event.pointerId);
+  startHold(target);
+});
+
+document.addEventListener("pointerup", cancelHold);
+document.addEventListener("pointercancel", cancelHold);
+document.addEventListener("lostpointercapture", cancelHold);
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target.closest("[data-hold-action]");
+  if (!target || !["Enter", " "].includes(event.key)) return;
+  event.preventDefault();
+  if (!event.repeat) startHold(target);
+});
+
+document.addEventListener("keyup", (event) => {
+  if (!["Enter", " "].includes(event.key)) return;
+  cancelHold();
 });
 
 window.addEventListener("storage", (event) => {
