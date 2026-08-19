@@ -39,6 +39,10 @@ button:disabled { cursor: default; opacity: .35; }
 .hotspot:focus-visible { outline: 3px solid #1570ef; outline-offset: 2px; background: rgba(21,112,239,.08); }
 .code-digit { position: absolute; left: 72.2%; top: 27.7%; width: 19.3%; height: 6.8%; display: grid; place-items: center; color: #202026; background: #fff; border: 1px solid #202026; border-radius: 15px; font-size: 27px; }
 .next-enabled { position: absolute; left: 8.4%; top: 55%; width: 83.2%; height: 5.9%; display: grid; place-items: center; border-radius: 999px; color: #fff; background: var(--accent); font-size: 16px; font-weight: 600; pointer-events: none; }
+.volume-value { position: absolute; top: 71.4%; width: 32.6%; height: 5.3%; display: flex; align-items: center; justify-content: center; gap: 3px; border-radius: 999px; color: #8f858b; background: #fff; font-family: Georgia, serif; font-size: 31px; pointer-events: none; }
+.volume-value.left { left: 8.2%; }
+.volume-value.right { left: 59.5%; }
+.volume-value small { align-self: flex-end; margin-bottom: 10px; font-family: Inter, ui-sans-serif, sans-serif; font-size: 12px; }
 
 .launcher { min-height: 100vh; padding: 28px clamp(18px, 4vw, 64px) 64px; background: #f7f6f5; }
 .launcher-header { max-width: 1180px; margin: 0 auto 30px; display: flex; align-items: end; justify-content: space-between; gap: 24px; }

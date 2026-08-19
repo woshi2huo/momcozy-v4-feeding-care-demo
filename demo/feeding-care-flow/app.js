@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.2";
+const VERSION = "0.3.3";
 const STORAGE_KEY = `momcozy-figma-755-demo-v3-${ENTRY}`;
 
 const hospitalScreens = [
@@ -13,7 +13,12 @@ const hospitalScreens = [
   { id: "training-welcome", image: "home-00-welcome.png", width: 393, height: 852, label: "设备教学欢迎页" },
   { id: "training-guide", image: "home-01-guide.png", width: 393, height: 852, label: "设备教学详情页" },
   { id: "training-guide-final", image: "home-01b-guide-final.png", width: 393, height: 852, label: "设备教学最后一页" },
-  { id: "training-ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备教学完成页" }
+  { id: "training-ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备教学完成页" },
+  { id: "pump-control", image: "home-03-control.png", width: 375, height: 956, label: "吸乳器控制页" },
+  { id: "pump-running", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
+  { id: "pump-finished", image: "home-05-finished.png", width: 402, height: 874, label: "记录奶量" },
+  { id: "pump-logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
+  { id: "pump-dashboard", image: "home-07-dashboard.png", width: 402, height: 874, label: "吸乳子场景卡" }
 ];
 
 const homeScreens = [
@@ -35,7 +40,9 @@ const defaults = {
   trainingDone: false,
   codeDigit: "",
   pumpRunning: false,
-  sessionLogged: false
+  sessionLogged: false,
+  leftVolume: 0,
+  rightVolume: 0
 };
 
 let state = loadState();
@@ -43,7 +50,10 @@ let transitionTimer = null;
 
 function loadState() {
   try {
-    return { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
+    const saved = { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
+    saved.hospitalStep = Math.max(0, Math.min(hospitalScreens.length - 1, Number(saved.hospitalStep) || 0));
+    saved.homeStep = Math.max(0, Math.min(homeScreens.length - 1, Number(saved.homeStep) || 0));
+    return saved;
   } catch {
     return { ...defaults };
   }
@@ -110,7 +120,21 @@ function hospitalHotspots(screen) {
         hotspot("hospital-next", "完成设备设置", 4.1, 89.5, 91.8, 6.8)
       ].join("");
     case "training-ready":
-      return hotspot("complete-hospital-training", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
+      return hotspot("hospital-open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
+    case "pump-control":
+      return hotspot("hospital-start-pump", "开始吸乳", 6.3, 91.2, 87.4, 5.6);
+    case "pump-running":
+      return hotspot("hospital-finish-pump", "完成本次吸乳", 23.0, 11.2, 54.0, 15.5);
+    case "pump-finished":
+      return [
+        hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
+        hotspot("hospital-left-down", "减少左侧奶量", 18.5, 65.9, 12.0, 2.9),
+        hotspot("hospital-right-up", "增加右侧奶量", 69.5, 63.0, 12.0, 2.9),
+        hotspot("hospital-right-down", "减少右侧奶量", 69.5, 65.9, 12.0, 2.9),
+        hotspot("hospital-save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2)
+      ].join("");
+    case "pump-logged":
+      return hotspot("hospital-show-dashboard", "查看吸乳子场景卡", 0, 0, 100, 100);
     default: return "";
   }
 }
@@ -155,17 +179,20 @@ function screenMarkup(kind) {
   const digit = screen.id === "code" && state.codeDigit
     ? `<span class="code-digit" aria-hidden="true">${state.codeDigit}</span><span class="next-enabled" aria-hidden="true">Next</span>`
     : "";
+  const volumes = kind === "hospital" && screen.id === "pump-finished"
+    ? `<span class="volume-value left" aria-live="polite">${state.leftVolume}<small>ml</small></span><span class="volume-value right" aria-live="polite">${state.rightVolume}<small>ml</small></span>`
+    : "";
   return `<div class="screen-frame" style="--screen-width:${screen.width};--screen-height:${screen.height}">
     <img class="figma-screen" src="./assets/figma-755/${screen.image}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
-    <div class="hotspot-layer">${hotspots}${digit}</div>
+    <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
   </div>`;
 }
 
 function prototypeToolbar(kind) {
-  const step = state[`${kind}Step`];
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+  const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
   const status = kind === "hospital"
-    ? (state.trainingDone ? "设备教学已完成" : state.deviceBound ? (step >= 7 ? "设备教学中" : "V4 已绑定") : "院端独立演示")
+    ? (state.sessionLogged ? "吸乳记录已完成" : state.pumpRunning ? "正在吸乳" : step >= 11 ? "设备已就绪" : state.trainingDone ? "设备教学已完成" : state.deviceBound ? (step >= 7 ? "设备教学中" : "V4 已绑定") : "院端独立演示")
     : (state.sessionLogged ? "本次记录已保存" : "居家独立演示");
   const ready = kind === "home" || state.deviceBound;
   return `<div class="prototype-toolbar">
@@ -201,6 +228,9 @@ function render() {
   if (ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
     transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功"), 1500);
   }
+  if (ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
+    transitionTimer = setTimeout(() => setState({ hospitalStep: hospitalScreens.length - 1 }), 1600);
+  }
   if (ENTRY === "home" && homeScreens[state.homeStep].id === "logged") {
     transitionTimer = setTimeout(() => setState({ homeStep: 7 }), 1600);
   }
@@ -213,10 +243,18 @@ function handleAction(action, target) {
     case "enter-code": if (!state.codeDigit) setState({ codeDigit: "4" }, "验证码已填写"); break;
     case "submit-code": if (state.codeDigit) setState({ hospitalStep: 5 }); break;
     case "hospital-learn": setState({ hospitalStep: 7 }); break;
-    case "hospital-training-ready": setState({ hospitalStep: hospitalScreens.length - 1 }); break;
+    case "hospital-training-ready": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "training-ready") }); break;
     case "hospital-training-exit": setState({ hospitalStep: 6 }); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
-    case "complete-hospital-training": setState({ trainingDone: true }, "院端设备教学已完成"); break;
+    case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "院端设备教学已完成"); break;
+    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-running"), pumpRunning: true }, "V4 已开始吸乳"); break;
+    case "hospital-finish-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false }); break;
+    case "hospital-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
+    case "hospital-left-down": setState({ leftVolume: Math.max(0, state.leftVolume - 10) }); break;
+    case "hospital-right-up": setState({ rightVolume: Math.min(300, state.rightVolume + 10) }); break;
+    case "hospital-right-down": setState({ rightVolume: Math.max(0, state.rightVolume - 10) }); break;
+    case "hospital-save-session": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-logged"), sessionLogged: true }, `已记录 ${state.leftVolume + state.rightVolume} ml`); break;
+    case "hospital-show-dashboard": setState({ hospitalStep: hospitalScreens.length - 1 }); break;
     case "home-next": setState({ homeStep: Math.min(8, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-ready": setState({ homeStep: 2 }); break;
