@@ -1,6 +1,8 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.4";
-const STORAGE_KEY = `momcozy-figma-755-demo-v3-${ENTRY}`;
+const VERSION = "0.3.5";
+const STORAGE_KEY = ENTRY === "home"
+  ? `momcozy-figma-755-demo-v${VERSION}-home`
+  : `momcozy-figma-755-demo-v3-${ENTRY}`;
 
 const hospitalScreens = [
   { id: "empty", image: "hospital-00-empty.png", width: 393, height: 852, label: "设备页空态" },
@@ -22,6 +24,11 @@ const hospitalScreens = [
 ];
 
 const homeScreens = [
+  { id: "connect-empty", image: "home-connect-00-empty.png", width: 393, height: 852, label: "设备页空态" },
+  { id: "connect-found", image: "home-connect-00-empty.png", width: 393, height: 852, label: "发现 V4" },
+  { id: "connect-connecting", image: "home-connect-00-empty.png", width: 393, height: 852, label: "正在连接 V4" },
+  { id: "connect-done", image: "home-connect-00-empty.png", width: 393, height: 852, label: "V4 连接完成" },
+  { id: "connect-device", image: "home-connect-04-device.png", width: 393, height: 852, label: "设备已添加" },
   { id: "welcome", image: "home-00-welcome.png", width: 393, height: 852, label: "设备助手欢迎页" },
   { id: "guide", image: "home-01-guide.png", width: 393, height: 852, label: "设备助手教学页" },
   { id: "ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备助手完成页" },
@@ -37,6 +44,7 @@ const defaults = {
   hospitalStep: 0,
   homeStep: 0,
   deviceBound: false,
+  homeDeviceConnected: false,
   trainingDone: false,
   codeDigit: "",
   pumpRunning: false,
@@ -165,6 +173,7 @@ function hospitalHotspots(screen) {
 
 function homeHotspots(screen) {
   switch (screen.id) {
+    case "connect-empty": return hotspot("home-connection-found", "添加 V4 设备", 30.5, 33.0, 38.8, 6.4);
     case "welcome":
       return [
         hotspot("home-ready", "跳过设备教学", 76.8, 7.2, 17.3, 5.5),
@@ -195,6 +204,36 @@ function homeHotspots(screen) {
   }
 }
 
+function connectionMarkup(screen) {
+  const sheetStates = {
+    "connect-found": { action: "home-connection-connect", label: "Connect", className: "" },
+    "connect-connecting": { action: "", label: "Connecting", className: "connecting" },
+    "connect-done": { action: "home-connection-complete", label: "Done", className: "done" }
+  };
+  const sheet = sheetStates[screen.id];
+  if (sheet) {
+    const action = sheet.action ? `data-action="${sheet.action}"` : "disabled";
+    const loader = screen.id === "connect-connecting" ? icon("loader-circle", "连接中") : "";
+    return `<div class="connection-shade" aria-hidden="true"></div>
+      <section class="connect-sheet" aria-label="V4 设备连接">
+        <button type="button" class="connect-close" data-action="home-connection-cancel" aria-label="关闭连接">${icon("x", "关闭连接")}</button>
+        <strong>V4</strong>
+        <span>New Device Connectable</span>
+        <img src="./assets/figma-755/home-connect-v4.png" width="180" height="136" alt="V4 吸乳器" draggable="false" />
+        <button type="button" class="connect-sheet-button ${sheet.className}" ${action}>${loader}<span>${sheet.label}</span></button>
+      </section>`;
+  }
+  if (screen.id === "connect-device") {
+    return `<section class="connect-ready-card" aria-label="V4 已添加">
+      <div class="connect-ready-title"><strong>Breast Pump</strong><span>V4 Added</span></div>
+      <p>Tap below for a quick<br />setup guide</p>
+      <img src="./assets/figma-755/home-connect-v4.png" width="90" height="68" alt="V4 吸乳器" draggable="false" />
+      <button type="button" data-action="home-connection-start-training">Get Start</button>
+    </section>`;
+  }
+  return "";
+}
+
 function screenMarkup(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
@@ -210,6 +249,7 @@ function screenMarkup(kind) {
   const holdControl = finishAction
     ? `<button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to finish</span></button>`
     : "";
+  const connection = kind === "home" ? connectionMarkup(screen) : "";
   return `<div class="screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}">
     <div class="screen-scroll">
       <div class="screen-canvas">
@@ -217,6 +257,7 @@ function screenMarkup(kind) {
         <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
       </div>
     </div>
+    ${connection}
     ${holdControl}
   </div>`;
 }
@@ -224,10 +265,11 @@ function screenMarkup(kind) {
 function prototypeToolbar(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
+  const screenId = screens[step].id;
   const status = kind === "hospital"
     ? (state.sessionLogged ? "吸乳记录已完成" : state.pumpRunning ? "正在吸乳" : step >= 11 ? "设备已就绪" : state.trainingDone ? "设备教学已完成" : state.deviceBound ? (step >= 7 ? "设备教学中" : "V4 已绑定") : "院端独立演示")
-    : (state.sessionLogged ? "本次记录已保存" : "居家独立演示");
-  const ready = kind === "home" || state.deviceBound;
+    : (state.sessionLogged ? "本次记录已保存" : state.pumpRunning ? "正在吸乳" : screenId === "connect-connecting" ? "正在连接 V4" : screenId === "connect-done" ? "V4 连接完成" : state.homeDeviceConnected ? "V4 已连接" : "等待连接 V4");
+  const ready = kind === "home" ? state.homeDeviceConnected : state.deviceBound;
   return `<div class="prototype-toolbar">
     <div class="prototype-meta"><strong>${kind === "hospital" ? "院端设备配置与教学" : "居家吸乳使用"}</strong><span>${step + 1}/${screens.length} · ${screens[step].label}</span></div>
     <div class="sync-state ${ready ? "ready" : ""}"><span></span>${status}</div>
@@ -248,7 +290,7 @@ function launcher() {
     <header class="launcher-header"><div><span>Figma 755:11403</span><h1>吸乳器双场景独立 Demo</h1></div><div class="launcher-actions"><span class="version">v${VERSION}</span></div></header>
     <section class="demo-grid">
       <article class="demo-column"><div class="demo-heading"><div><strong>院端 Demo</strong><span>绑定并完成 V4 设备教学</span></div><a href="./hospital.html" target="_blank">独立打开</a></div><iframe src="./hospital.html" title="院端 Demo"></iframe></article>
-      <article class="demo-column"><div class="demo-heading"><div><strong>居家 Demo</strong><span>教学、吸乳、记录与数据</span></div><a href="./home.html" target="_blank">独立打开</a></div><iframe src="./home.html" title="居家 Demo"></iframe></article>
+      <article class="demo-column"><div class="demo-heading"><div><strong>居家 Demo</strong><span>连接、教学、吸乳、记录与数据</span></div><a href="./home.html" target="_blank">独立打开</a></div><iframe src="./home.html" title="居家 Demo"></iframe></article>
     </section>
   </main>`;
 }
@@ -265,8 +307,13 @@ function render() {
   if (ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
     transitionTimer = setTimeout(() => setState({ hospitalStep: hospitalScreens.length - 1 }), 1600);
   }
+  if (ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
+    transitionTimer = setTimeout(() => setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-done") }), 1400);
+  }
   if (ENTRY === "home" && homeScreens[state.homeStep].id === "logged") {
-    transitionTimer = setTimeout(() => setState({ homeStep: 7 }), 1600);
+    transitionTimer = setTimeout(() => setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === "dashboard")
+    }), 1600);
   }
 }
 
@@ -289,15 +336,20 @@ function handleAction(action, target) {
     case "hospital-right-down": setState({ rightVolume: Math.max(0, state.rightVolume - 10) }); break;
     case "hospital-save-session": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-logged"), sessionLogged: true }, `已记录 ${state.leftVolume + state.rightVolume} ml`); break;
     case "hospital-show-dashboard": setState({ hospitalStep: hospitalScreens.length - 1 }); break;
-    case "home-next": setState({ homeStep: Math.min(8, state.homeStep + 1) }); break;
+    case "home-connection-found": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-found") }); break;
+    case "home-connection-connect": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-connecting") }); break;
+    case "home-connection-cancel": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-empty") }); break;
+    case "home-connection-complete": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-device"), homeDeviceConnected: true }, "V4 已连接"); break;
+    case "home-connection-start-training": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "welcome"), homeDeviceConnected: true }); break;
+    case "home-next": setState({ homeStep: Math.min(homeScreens.length - 1, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
-    case "home-ready": setState({ homeStep: 2 }); break;
-    case "start-pump": setState({ homeStep: 4, pumpRunning: true }, "V4 已开始吸乳"); break;
-    case "finish-pump": setState({ homeStep: 5, pumpRunning: false }); break;
-    case "save-session": setState({ homeStep: 6, sessionLogged: true }, "吸乳记录已保存"); break;
-    case "show-dashboard": setState({ homeStep: 7 }); break;
-    case "home-device": setState({ homeStep: 8 }); break;
-    case "home-control": setState({ homeStep: 3 }); break;
+    case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
+    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "pumping"), pumpRunning: true }, "V4 已开始吸乳"); break;
+    case "finish-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "finished"), pumpRunning: false }); break;
+    case "save-session": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "logged"), sessionLogged: true }, "吸乳记录已保存"); break;
+    case "show-dashboard": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "dashboard") }); break;
+    case "home-device": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "device") }); break;
+    case "home-control": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "control") }); break;
     case "step-back": {
       const key = `${target.dataset.kind}Step`;
       setState({ [key]: Math.max(0, state[key] - 1) });
