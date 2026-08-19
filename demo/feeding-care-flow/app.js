@@ -1,5 +1,6 @@
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const STORAGE_KEY = "momcozy-carelink-demo-v1";
+const ENTRY_SIDE = document.body.dataset.entry || "";
 
 const defaults = {
   side: "hospital",
@@ -23,6 +24,7 @@ const defaults = {
 };
 
 let state = loadState();
+if (ENTRY_SIDE) state.side = ENTRY_SIDE;
 let modal = null;
 
 function loadState() {
@@ -206,7 +208,11 @@ function render() {
 document.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]"); if (!target) return;
   const action = target.dataset.action;
-  if (action === "switch-side") setState({ side: target.dataset.side });
+  if (action === "switch-side") {
+    const side = target.dataset.side;
+    if (ENTRY_SIDE) window.location.href = side === "hospital" ? "./hospital.html" : "./home.html";
+    else setState({ side });
+  }
   if (action === "hospital-view") setState({ hospitalView: target.dataset.view });
   if (action === "home-view") setState({ homeView: target.dataset.view });
   if (action === "mix-mode") setState({ mixMode: target.dataset.mode });

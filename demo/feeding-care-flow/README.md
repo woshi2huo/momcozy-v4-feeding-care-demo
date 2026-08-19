@@ -9,7 +9,13 @@ cd /Users/user/Documents/IoT项目
 python3 -m http.server 4173
 ```
 
-访问 `http://localhost:4173/demo/feeding-care-flow/`。
+三个入口：
+
+- 院端：`http://localhost:4173/demo/feeding-care-flow/hospital.html`
+- 居家端：`http://localhost:4173/demo/feeding-care-flow/home.html`
+- 全流程切换：`http://localhost:4173/demo/feeding-care-flow/`
+
+院端与居家端位于同一源下，通过浏览器 `localStorage` 共享方案、设备、喂养记录和预警状态。
 
 ## 推荐演示路径
 
@@ -35,7 +41,7 @@ git tag --list 'feeding-care-demo-*'
 临时查看历史版本：
 
 ```bash
-git switch --detach feeding-care-demo-v0.1.0
+git switch --detach feeding-care-demo-v0.2.0
 ```
 
 返回当前版本：
@@ -47,7 +53,7 @@ git switch main
 如需在当前分支恢复某个版本的原型目录：
 
 ```bash
-git restore --source feeding-care-demo-v0.1.0 -- demo/feeding-care-flow
+git restore --source feeding-care-demo-v0.2.0 -- demo/feeding-care-flow
 ```
 
 ## 文件
