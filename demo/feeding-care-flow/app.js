@@ -1,6 +1,6 @@
-const VERSION = "0.3.0";
-const STORAGE_KEY = "momcozy-figma-755-demo-v3";
 const ENTRY = document.body.dataset.entry || "launcher";
+const VERSION = "0.3.1";
+const STORAGE_KEY = `momcozy-figma-755-demo-v3-${ENTRY}`;
 
 const hospitalScreens = [
   { id: "empty", image: "hospital-00-empty.png", width: 393, height: 852, label: "设备页空态" },
@@ -85,8 +85,8 @@ function hospitalHotspots(screen) {
       ].join("");
     case "success":
       return [
-        hotspot("handoff-home", "学习使用设备", 6.4, 83.2, 87.2, 6.2),
-        hotspot("handoff-home", "完成绑定", 34.0, 90.3, 32.0, 4.0)
+        hotspot("complete-hospital", "学习使用设备", 6.4, 83.2, 87.2, 6.2),
+        hotspot("complete-hospital", "完成绑定", 34.0, 90.3, 32.0, 4.0)
       ].join("");
     default: return "";
   }
@@ -141,10 +141,11 @@ function screenMarkup(kind) {
 function prototypeToolbar(kind) {
   const step = state[`${kind}Step`];
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-  const status = kind === "hospital" ? (state.deviceBound ? "V4 已绑定" : "等待绑定 V4") : (state.deviceBound ? "已接收院端设备" : "等待院端绑定");
+  const status = kind === "hospital" ? (state.deviceBound ? "V4 已绑定" : "院端独立演示") : (state.sessionLogged ? "本次记录已保存" : "居家独立演示");
+  const ready = kind === "home" || state.deviceBound;
   return `<div class="prototype-toolbar">
     <div class="prototype-meta"><strong>${kind === "hospital" ? "院端设备配置" : "居家吸乳使用"}</strong><span>${step + 1}/${screens.length} · ${screens[step].label}</span></div>
-    <div class="sync-state ${state.deviceBound ? "ready" : ""}"><span></span>${status}</div>
+    <div class="sync-state ${ready ? "ready" : ""}"><span></span>${status}</div>
     <div class="toolbar-actions">
       <button class="tool-button" data-action="step-back" data-kind="${kind}" title="上一步" ${step === 0 ? "disabled" : ""}>${icon("arrow-left", "上一步")}</button>
       <button class="tool-button" data-action="step-next" data-kind="${kind}" title="下一步" ${step >= screens.length - 1 ? "disabled" : ""}>${icon("arrow-right", "下一步")}</button>
@@ -159,8 +160,7 @@ function prototypePage(kind) {
 
 function launcher() {
   return `<main class="launcher">
-    <header class="launcher-header"><div><span>Figma 755:11403</span><h1>吸乳器院端与居家流程</h1></div><div class="launcher-actions"><span class="version">v${VERSION}</span><button class="text-button" data-action="reset">${icon("rotate-ccw", "重置")}重置流程</button></div></header>
-    <div class="flow-line" aria-label="流程状态"><span class="active">院端绑定</span><i></i><span class="${state.deviceBound ? "active" : ""}">居家教学</span><i></i><span class="${state.sessionLogged ? "active" : ""}">吸乳与记录</span></div>
+    <header class="launcher-header"><div><span>Figma 755:11403</span><h1>吸乳器双场景独立 Demo</h1></div><div class="launcher-actions"><span class="version">v${VERSION}</span></div></header>
     <section class="demo-grid">
       <article class="demo-column"><div class="demo-heading"><div><strong>院端 Demo</strong><span>绑定并交接 V4 设备</span></div><a href="./hospital.html" target="_blank">独立打开</a></div><iframe src="./hospital.html" title="院端 Demo"></iframe></article>
       <article class="demo-column"><div class="demo-heading"><div><strong>居家 Demo</strong><span>教学、吸乳、记录与数据</span></div><a href="./home.html" target="_blank">独立打开</a></div><iframe src="./home.html" title="居家 Demo"></iframe></article>
@@ -174,19 +174,11 @@ function render() {
   app.innerHTML = ENTRY === "launcher" ? launcher() : prototypePage(ENTRY);
   if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
   if (ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
-    transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功，居家端已同步"), 1500);
+    transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功"), 1500);
   }
   if (ENTRY === "home" && homeScreens[state.homeStep].id === "logged") {
     transitionTimer = setTimeout(() => setState({ homeStep: 7 }), 1600);
   }
-}
-
-function guardedHomeStep(nextStep) {
-  if (!state.deviceBound) {
-    showToast("请先在院端完成 V4 设备绑定");
-    return;
-  }
-  setState({ homeStep: nextStep });
 }
 
 function handleAction(action, target) {
@@ -194,22 +186,16 @@ function handleAction(action, target) {
     case "hospital-next": setState({ hospitalStep: Math.min(6, state.hospitalStep + 1) }); break;
     case "enter-code": if (!state.codeDigit) setState({ codeDigit: "4" }, "验证码已填写"); break;
     case "submit-code": if (state.codeDigit) setState({ hospitalStep: 5 }); break;
-    case "handoff-home":
-      setState({ deviceBound: true, homeStep: 0 }, "设备已交接至居家端");
-      if (window.self === window.top) setTimeout(() => { window.location.href = "./home.html"; }, 450);
-      break;
-    case "home-next": guardedHomeStep(Math.min(8, state.homeStep + 1)); break;
+    case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
+    case "home-next": setState({ homeStep: Math.min(8, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
-    case "home-ready": guardedHomeStep(2); break;
-    case "start-pump":
-      if (!state.deviceBound) showToast("请先在院端完成 V4 设备绑定");
-      else setState({ homeStep: 4, pumpRunning: true }, "V4 已开始吸乳");
-      break;
+    case "home-ready": setState({ homeStep: 2 }); break;
+    case "start-pump": setState({ homeStep: 4, pumpRunning: true }, "V4 已开始吸乳"); break;
     case "finish-pump": setState({ homeStep: 5, pumpRunning: false }); break;
     case "save-session": setState({ homeStep: 6, sessionLogged: true }, "吸乳记录已保存"); break;
     case "show-dashboard": setState({ homeStep: 7 }); break;
     case "home-device": setState({ homeStep: 8 }); break;
-    case "home-control": guardedHomeStep(3); break;
+    case "home-control": setState({ homeStep: 3 }); break;
     case "step-back": {
       const key = `${target.dataset.kind}Step`;
       setState({ [key]: Math.max(0, state[key] - 1) });
@@ -219,8 +205,7 @@ function handleAction(action, target) {
       const kind = target.dataset.kind;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
       const key = `${kind}Step`;
-      if (kind === "home" && !state.deviceBound) showToast("请先在院端完成 V4 设备绑定");
-      else setState({ [key]: Math.min(screens.length - 1, state[key] + 1) });
+      setState({ [key]: Math.min(screens.length - 1, state[key] + 1) });
       break;
     }
     case "reset":
