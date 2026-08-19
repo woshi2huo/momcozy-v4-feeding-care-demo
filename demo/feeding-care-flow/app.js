@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.1";
+const VERSION = "0.3.2";
 const STORAGE_KEY = `momcozy-figma-755-demo-v3-${ENTRY}`;
 
 const hospitalScreens = [
@@ -9,7 +9,11 @@ const hospitalScreens = [
   { id: "scan", image: "hospital-03-scan.png", width: 375, height: 812, label: "扫描设备" },
   { id: "code", image: "hospital-04-code.png", width: 415, height: 874, label: "输入验证码" },
   { id: "binding", image: "hospital-05-binding.png", width: 375, height: 812, label: "绑定中" },
-  { id: "success", image: "hospital-06-success.png", width: 375, height: 812, label: "绑定成功" }
+  { id: "success", image: "hospital-06-success.png", width: 375, height: 812, label: "绑定成功" },
+  { id: "training-welcome", image: "home-00-welcome.png", width: 393, height: 852, label: "设备教学欢迎页" },
+  { id: "training-guide", image: "home-01-guide.png", width: 393, height: 852, label: "设备教学详情页" },
+  { id: "training-guide-final", image: "home-01b-guide-final.png", width: 393, height: 852, label: "设备教学最后一页" },
+  { id: "training-ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备教学完成页" }
 ];
 
 const homeScreens = [
@@ -28,6 +32,7 @@ const defaults = {
   hospitalStep: 0,
   homeStep: 0,
   deviceBound: false,
+  trainingDone: false,
   codeDigit: "",
   pumpRunning: false,
   sessionLogged: false
@@ -85,9 +90,27 @@ function hospitalHotspots(screen) {
       ].join("");
     case "success":
       return [
-        hotspot("complete-hospital", "学习使用设备", 6.4, 83.2, 87.2, 6.2),
+        hotspot("hospital-learn", "学习使用设备", 6.4, 83.2, 87.2, 6.2),
         hotspot("complete-hospital", "完成绑定", 34.0, 90.3, 32.0, 4.0)
       ].join("");
+    case "training-welcome":
+      return [
+        hotspot("hospital-training-ready", "跳过设备教学", 76.8, 7.2, 17.3, 5.5),
+        hotspot("hospital-next", "开始设备教学", 6.0, 87.5, 88.0, 6.0)
+      ].join("");
+    case "training-guide":
+      return [
+        hotspot("hospital-training-exit", "关闭设备教学", 4.0, 7.2, 12.0, 5.8),
+        hotspot("hospital-prev", "上一步", 4.2, 89.5, 30.2, 6.7),
+        hotspot("hospital-next", "下一步", 37.6, 89.5, 58.4, 6.7)
+      ].join("");
+    case "training-guide-final":
+      return [
+        hotspot("hospital-training-exit", "关闭设备教学", 4.0, 7.2, 12.0, 5.8),
+        hotspot("hospital-next", "完成设备设置", 4.1, 89.5, 91.8, 6.8)
+      ].join("");
+    case "training-ready":
+      return hotspot("complete-hospital-training", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
     default: return "";
   }
 }
@@ -141,10 +164,12 @@ function screenMarkup(kind) {
 function prototypeToolbar(kind) {
   const step = state[`${kind}Step`];
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-  const status = kind === "hospital" ? (state.deviceBound ? "V4 已绑定" : "院端独立演示") : (state.sessionLogged ? "本次记录已保存" : "居家独立演示");
+  const status = kind === "hospital"
+    ? (state.trainingDone ? "设备教学已完成" : state.deviceBound ? (step >= 7 ? "设备教学中" : "V4 已绑定") : "院端独立演示")
+    : (state.sessionLogged ? "本次记录已保存" : "居家独立演示");
   const ready = kind === "home" || state.deviceBound;
   return `<div class="prototype-toolbar">
-    <div class="prototype-meta"><strong>${kind === "hospital" ? "院端设备配置" : "居家吸乳使用"}</strong><span>${step + 1}/${screens.length} · ${screens[step].label}</span></div>
+    <div class="prototype-meta"><strong>${kind === "hospital" ? "院端设备配置与教学" : "居家吸乳使用"}</strong><span>${step + 1}/${screens.length} · ${screens[step].label}</span></div>
     <div class="sync-state ${ready ? "ready" : ""}"><span></span>${status}</div>
     <div class="toolbar-actions">
       <button class="tool-button" data-action="step-back" data-kind="${kind}" title="上一步" ${step === 0 ? "disabled" : ""}>${icon("arrow-left", "上一步")}</button>
@@ -162,7 +187,7 @@ function launcher() {
   return `<main class="launcher">
     <header class="launcher-header"><div><span>Figma 755:11403</span><h1>吸乳器双场景独立 Demo</h1></div><div class="launcher-actions"><span class="version">v${VERSION}</span></div></header>
     <section class="demo-grid">
-      <article class="demo-column"><div class="demo-heading"><div><strong>院端 Demo</strong><span>绑定并交接 V4 设备</span></div><a href="./hospital.html" target="_blank">独立打开</a></div><iframe src="./hospital.html" title="院端 Demo"></iframe></article>
+      <article class="demo-column"><div class="demo-heading"><div><strong>院端 Demo</strong><span>绑定并完成 V4 设备教学</span></div><a href="./hospital.html" target="_blank">独立打开</a></div><iframe src="./hospital.html" title="院端 Demo"></iframe></article>
       <article class="demo-column"><div class="demo-heading"><div><strong>居家 Demo</strong><span>教学、吸乳、记录与数据</span></div><a href="./home.html" target="_blank">独立打开</a></div><iframe src="./home.html" title="居家 Demo"></iframe></article>
     </section>
   </main>`;
@@ -183,10 +208,15 @@ function render() {
 
 function handleAction(action, target) {
   switch (action) {
-    case "hospital-next": setState({ hospitalStep: Math.min(6, state.hospitalStep + 1) }); break;
+    case "hospital-next": setState({ hospitalStep: Math.min(hospitalScreens.length - 1, state.hospitalStep + 1) }); break;
+    case "hospital-prev": setState({ hospitalStep: Math.max(0, state.hospitalStep - 1) }); break;
     case "enter-code": if (!state.codeDigit) setState({ codeDigit: "4" }, "验证码已填写"); break;
     case "submit-code": if (state.codeDigit) setState({ hospitalStep: 5 }); break;
+    case "hospital-learn": setState({ hospitalStep: 7 }); break;
+    case "hospital-training-ready": setState({ hospitalStep: hospitalScreens.length - 1 }); break;
+    case "hospital-training-exit": setState({ hospitalStep: 6 }); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
+    case "complete-hospital-training": setState({ trainingDone: true }, "院端设备教学已完成"); break;
     case "home-next": setState({ homeStep: Math.min(8, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-ready": setState({ homeStep: 2 }); break;
