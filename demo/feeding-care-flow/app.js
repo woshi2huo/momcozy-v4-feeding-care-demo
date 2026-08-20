@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.8";
+const VERSION = "0.3.9";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -57,6 +57,8 @@ let state = loadState();
 let transitionTimer = null;
 let holdTimer = null;
 let holdTarget = null;
+let navigationOpen = false;
+let directNavigation = false;
 
 function loadState() {
   try {
@@ -268,6 +270,7 @@ function prototypeToolbar(kind) {
     : (state.sessionLogged ? "本次记录已保存" : state.pumpRunning ? "正在吸乳" : screenId === "connect-connecting" ? "正在连接 V4" : screenId === "connect-done" ? "V4 连接完成" : state.homeDeviceConnected ? "V4 已连接" : "等待连接 V4");
   const ready = kind === "home" ? state.homeDeviceConnected : state.deviceBound;
   return `<div class="prototype-toolbar">
+    <button class="tool-button navigation-trigger" data-action="navigation-open" title="打开 Demo 目录" aria-label="打开 Demo 目录" aria-expanded="${navigationOpen}">${icon("panel-left", "打开 Demo 目录")}</button>
     <div class="prototype-meta"><strong>${kind === "hospital" ? "院端设备配置与教学" : "居家吸乳使用"}</strong><span>${step + 1}/${screens.length} · ${screens[step].label}</span></div>
     <div class="sync-state ${ready ? "ready" : ""}"><span></span>${status}</div>
     <div class="toolbar-actions">
@@ -278,8 +281,54 @@ function prototypeToolbar(kind) {
   </div>`;
 }
 
+function prototypeNavigation(kind) {
+  const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+  const activeStep = state[`${kind}Step`];
+  const groups = kind === "hospital"
+    ? [
+        { label: "设备连接", icon: "link-2", start: 0, end: 6 },
+        { label: "设备教学", icon: "book-open", start: 7, end: 10 },
+        { label: "吸乳与记录", icon: "activity", start: 11, end: 15 }
+      ]
+    : [
+        { label: "连接设备", icon: "link-2", start: 0, end: 4 },
+        { label: "使用教学", icon: "book-open", start: 5, end: 7 },
+        { label: "吸乳与记录", icon: "activity", start: 8, end: 13 }
+      ];
+  const items = groups.map(group => {
+    const children = screens.slice(group.start, group.end + 1).map((screen, offset) => {
+      const index = group.start + offset;
+      const active = index === activeStep;
+      return `<button type="button" class="navigation-item ${active ? "active" : ""}" data-action="navigation-step" data-kind="${kind}" data-step="${index}" ${active ? 'aria-current="page"' : ""}>
+        <span class="navigation-index">${String(index + 1).padStart(2, "0")}</span>
+        <span>${screen.label}</span>
+      </button>`;
+    }).join("");
+    return `<section class="navigation-group" aria-label="${group.label}">
+      <h2>${icon(group.icon, group.label)}<span>${group.label}</span></h2>
+      <div class="navigation-items">${children}</div>
+    </section>`;
+  }).join("");
+  return `<aside class="prototype-navigation" aria-label="Demo 目录">
+    <div class="navigation-header">
+      <div><span>Momcozy V4</span><strong>Demo 目录</strong></div>
+      <button type="button" class="navigation-close" data-action="navigation-close" aria-label="关闭 Demo 目录" title="关闭 Demo 目录">${icon("panel-left-close", "关闭 Demo 目录")}</button>
+    </div>
+    <nav class="demo-switcher" aria-label="切换 Demo">
+      <a class="${kind === "hospital" ? "active" : ""}" href="./hospital.html" ${kind === "hospital" ? 'aria-current="page"' : ""}>${icon("building-2", "院端 Demo")}<span>院端</span></a>
+      <a class="${kind === "home" ? "active" : ""}" href="./home.html" ${kind === "home" ? 'aria-current="page"' : ""}>${icon("house", "居家 Demo")}<span>居家</span></a>
+    </nav>
+    <div class="navigation-scroll">${items}</div>
+    <div class="navigation-footer"><span>v${VERSION}</span><button type="button" data-action="reset">${icon("rotate-ccw", "重置当前流程")}<span>重置当前流程</span></button></div>
+  </aside>`;
+}
+
 function prototypePage(kind) {
-  return `<main class="prototype-page">${prototypeToolbar(kind)}<section class="device-stage" aria-label="${kind === "hospital" ? "院端交互原型" : "居家交互原型"}">${screenMarkup(kind)}</section></main>`;
+  return `<main class="prototype-page ${navigationOpen ? "navigation-open" : ""}">
+    ${prototypeNavigation(kind)}
+    <button type="button" class="navigation-backdrop" data-action="navigation-close" aria-label="关闭 Demo 目录"></button>
+    <div class="prototype-workspace">${prototypeToolbar(kind)}<section class="device-stage" aria-label="${kind === "hospital" ? "院端交互原型" : "居家交互原型"}">${screenMarkup(kind)}</section></div>
+  </main>`;
 }
 
 function launcher() {
@@ -298,16 +347,19 @@ function render() {
   const app = document.getElementById("app");
   app.innerHTML = ENTRY === "launcher" ? launcher() : prototypePage(ENTRY);
   if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
-  if (ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
+  requestAnimationFrame(() => {
+    app.querySelector(".navigation-item.active")?.scrollIntoView({ block: "nearest" });
+  });
+  if (!directNavigation && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
     transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功"), 1500);
   }
-  if (ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
+  if (!directNavigation && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
     transitionTimer = setTimeout(() => setState({ hospitalStep: hospitalScreens.length - 1 }), 1600);
   }
-  if (ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
+  if (!directNavigation && ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
     transitionTimer = setTimeout(() => setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-done") }), 1400);
   }
-  if (ENTRY === "home" && homeScreens[state.homeStep].id === "logged") {
+  if (!directNavigation && ENTRY === "home" && homeScreens[state.homeStep].id === "logged") {
     transitionTimer = setTimeout(() => setState({
       homeStep: homeScreens.findIndex(screen => screen.id === "dashboard")
     }), 1600);
@@ -315,7 +367,33 @@ function render() {
 }
 
 function handleAction(action, target) {
+  if (!["navigation-open", "navigation-close", "navigation-step"].includes(action)) directNavigation = false;
   switch (action) {
+    case "navigation-open": navigationOpen = true; render(); break;
+    case "navigation-close": navigationOpen = false; render(); break;
+    case "navigation-step": {
+      const kind = target.dataset.kind;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const key = `${kind}Step`;
+      const step = Math.max(0, Math.min(screens.length - 1, Number(target.dataset.step) || 0));
+      const progress = kind === "hospital"
+        ? {
+            deviceBound: step >= 6,
+            trainingDone: step >= 11,
+            pumpRunning: screens[step].id === "pump-running",
+            sessionLogged: step >= 14
+          }
+        : {
+            homeDeviceConnected: step >= 4,
+            trainingDone: step >= 8,
+            pumpRunning: screens[step].id === "pumping",
+            sessionLogged: step >= 11
+          };
+      navigationOpen = false;
+      directNavigation = true;
+      setState({ [key]: step, ...progress });
+      break;
+    }
     case "hospital-next": setState({ hospitalStep: Math.min(hospitalScreens.length - 1, state.hospitalStep + 1) }); break;
     case "hospital-prev": setState({ hospitalStep: Math.max(0, state.hospitalStep - 1) }); break;
     case "enter-code": if (!state.codeDigit) setState({ codeDigit: "4" }, "验证码已填写"); break;
