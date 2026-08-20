@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.10";
+const VERSION = "0.3.11";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -250,6 +250,9 @@ function screenMarkup(kind) {
   const holdControl = finishAction
     ? `<button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to finish</span></button>`
     : "";
+  const startControl = screen.image === "home-03-control.png"
+    ? `<button type="button" class="start-pumping-floating" data-action="${kind === "hospital" ? "hospital-start-pump" : "start-pump"}">Start Pumping</button>`
+    : "";
   const connection = kind === "home" ? connectionMarkup(screen) : "";
   return `<div class="screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}">
     <div class="screen-scroll">
@@ -261,6 +264,7 @@ function screenMarkup(kind) {
       </div>
     </div>
     ${connection}
+    ${startControl}
     ${holdControl}
   </div>`;
 }
