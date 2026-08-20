@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.13";
+const VERSION = "0.3.14";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -20,7 +20,8 @@ const hospitalScreens = [
   { id: "pump-running", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
   { id: "pump-finished", image: "home-05-finished.png", width: 402, height: 874, label: "记录奶量" },
   { id: "pump-logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
-  { id: "pump-dashboard", image: "home-07-dashboard.png", width: 402, height: 874, label: "吸乳子场景卡" }
+  { id: "pump-dashboard", image: "home-07-dashboard.png", width: 402, height: 874, label: "吸乳子场景卡" },
+  { id: "device-home", image: "home-08-device.png", width: 393, height: 852, label: "设备子首页" }
 ];
 
 const homeScreens = [
@@ -169,6 +170,8 @@ function hospitalHotspots(screen) {
       ].join("");
     case "pump-logged":
       return hotspot("hospital-show-dashboard", "查看吸乳子场景卡", 0, 0, 100, 100);
+    case "pump-dashboard":
+      return hotspot("hospital-return-device", "返回设备子首页", 3.8, 7.1, 11.0, 5.2);
     default: return "";
   }
 }
@@ -300,7 +303,7 @@ function prototypeNavigation(kind) {
     ? [
         { label: "设备连接", icon: "link-2", start: 0, end: 6 },
         { label: "设备教学", icon: "book-open", start: 7, end: 10 },
-        { label: "吸乳与记录", icon: "activity", start: 11, end: 15 }
+        { label: "吸乳与记录", icon: "activity", start: 11, end: 16 }
       ]
     : [
         { label: "连接设备", icon: "link-2", start: 0, end: 4 },
@@ -366,7 +369,9 @@ function render() {
     transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功"), 1500);
   }
   if (!directNavigation && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
-    transitionTimer = setTimeout(() => setState({ hospitalStep: hospitalScreens.length - 1 }), 1600);
+    transitionTimer = setTimeout(() => setState({
+      hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard")
+    }), 1600);
   }
   if (!directNavigation && ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
     transitionTimer = setTimeout(() => setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-done") }), 1400);
@@ -424,7 +429,8 @@ function handleAction(action, target) {
     case "hospital-right-up": setState({ rightVolume: Math.min(300, state.rightVolume + 10) }); break;
     case "hospital-right-down": setState({ rightVolume: Math.max(0, state.rightVolume - 10) }); break;
     case "hospital-save-session": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-logged"), sessionLogged: true }, `已记录 ${state.leftVolume + state.rightVolume} ml`); break;
-    case "hospital-show-dashboard": setState({ hospitalStep: hospitalScreens.length - 1 }); break;
+    case "hospital-show-dashboard": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard") }); break;
+    case "hospital-return-device": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "device-home") }); break;
     case "home-connection-found": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-found") }); break;
     case "home-connection-connect": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-connecting") }); break;
     case "home-connection-cancel": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-empty") }); break;
