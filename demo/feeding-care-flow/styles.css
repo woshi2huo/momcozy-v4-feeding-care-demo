@@ -65,12 +65,6 @@ button:disabled { cursor: default; opacity: .35; }
 .connect-sheet-button.connecting { background: #aaa7a9; }
 .connect-sheet-button.connecting svg { width: 16px; height: 16px; animation: connect-spin 1s linear infinite; }
 .connect-sheet-button.done { background: var(--accent); }
-.connect-ready-card { position: absolute; z-index: 5; top: 14.3%; right: 4.1%; left: 4.1%; height: 32.8%; display: flex; flex-direction: column; align-items: center; padding: 18px 16px 14px; overflow: hidden; border: 1px solid #ffdde1; border-radius: 24px; color: #770523; background: #ffedf1; box-shadow: 0 4px 24px rgba(0,0,0,.05); }
-.connect-ready-title { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
-.connect-ready-title span { padding: 4px 8px; border-radius: 999px; color: #796600; background: #fff4a8; font-size: 9px; white-space: nowrap; }
-.connect-ready-card p { margin: 12px 0 0; font-family: Georgia, serif; font-size: 17px; line-height: 1.2; text-align: center; }
-.connect-ready-card > img { position: absolute; right: 27px; bottom: 45px; width: 90px; height: 68px; object-fit: contain; opacity: .86; }
-.connect-ready-card > button { min-width: 100px; height: 34px; margin-top: auto; padding: 0 18px; border: 0; border-radius: 999px; color: #fff; background: #c76d82; font-size: 11px; }
 @keyframes connect-spin { to { transform: rotate(360deg); } }
 
 .launcher { min-height: 100vh; padding: 28px clamp(18px, 4vw, 64px) 64px; background: #f7f6f5; }

@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.5";
+const VERSION = "0.3.6";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -28,7 +28,7 @@ const homeScreens = [
   { id: "connect-found", image: "home-connect-00-empty.png", width: 393, height: 852, label: "发现 V4" },
   { id: "connect-connecting", image: "home-connect-00-empty.png", width: 393, height: 852, label: "正在连接 V4" },
   { id: "connect-done", image: "home-connect-00-empty.png", width: 393, height: 852, label: "V4 连接完成" },
-  { id: "connect-device", image: "home-connect-04-device.png", width: 393, height: 852, label: "设备已添加" },
+  { id: "connect-device", image: "home-connect-04-added-v036.png", width: 393, height: 852, label: "设备已添加" },
   { id: "welcome", image: "home-00-welcome.png", width: 393, height: 852, label: "设备助手欢迎页" },
   { id: "guide", image: "home-01-guide.png", width: 393, height: 852, label: "设备助手教学页" },
   { id: "ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备助手完成页" },
@@ -174,6 +174,7 @@ function hospitalHotspots(screen) {
 function homeHotspots(screen) {
   switch (screen.id) {
     case "connect-empty": return hotspot("home-connection-found", "添加 V4 设备", 30.5, 33.0, 38.8, 6.4);
+    case "connect-device": return hotspot("home-connection-start-training", "开始设备教学", 36.0, 36.0, 28.0, 4.8);
     case "welcome":
       return [
         hotspot("home-ready", "跳过设备教学", 76.8, 7.2, 17.3, 5.5),
@@ -222,14 +223,6 @@ function connectionMarkup(screen) {
         <img src="./assets/figma-755/home-connect-v4.png" width="180" height="136" alt="V4 吸乳器" draggable="false" />
         <button type="button" class="connect-sheet-button ${sheet.className}" ${action}>${loader}<span>${sheet.label}</span></button>
       </section>`;
-  }
-  if (screen.id === "connect-device") {
-    return `<section class="connect-ready-card" aria-label="V4 已添加">
-      <div class="connect-ready-title"><strong>Breast Pump</strong><span>V4 Added</span></div>
-      <p>Tap below for a quick<br />setup guide</p>
-      <img src="./assets/figma-755/home-connect-v4.png" width="90" height="68" alt="V4 吸乳器" draggable="false" />
-      <button type="button" data-action="home-connection-start-training">Get Start</button>
-    </section>`;
   }
   return "";
 }
