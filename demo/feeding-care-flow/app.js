@@ -1,8 +1,16 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.14";
+const VERSION = "0.3.15";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
+
+const calibrationScreens = [
+  { id: "check-initiation", image: "home-03-control.png", width: 375, height: 956, label: "检查 1 · 泌乳启动", calibration: true },
+  { id: "check-fit", image: "home-03-control.png", width: 375, height: 956, label: "检查 2 · 佩戴检测", calibration: true },
+  { id: "check-fit-passed", image: "home-03-control.png", width: 375, height: 956, label: "检查 2 · 佩戴通过", calibration: true },
+  { id: "check-comfort", image: "home-03-control.png", width: 375, height: 956, label: "检查 3 · 舒适负压", calibration: true },
+  { id: "check-comfort-found", image: "home-03-control.png", width: 375, height: 956, label: "检查 3 · 舒适度确认", calibration: true }
+];
 
 const hospitalScreens = [
   { id: "empty", image: "hospital-00-empty.png", width: 393, height: 852, label: "设备页空态" },
@@ -17,6 +25,7 @@ const hospitalScreens = [
   { id: "training-guide-final", image: "home-01b-guide-final.png", width: 393, height: 852, label: "设备教学最后一页" },
   { id: "training-ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备教学完成页" },
   { id: "pump-control", image: "home-03-control.png", width: 375, height: 956, label: "吸乳器控制页" },
+  ...calibrationScreens,
   { id: "pump-running", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
   { id: "pump-finished", image: "home-05-finished.png", width: 402, height: 874, label: "记录奶量" },
   { id: "pump-logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
@@ -34,6 +43,7 @@ const homeScreens = [
   { id: "guide", image: "home-01-guide.png", width: 393, height: 852, label: "设备助手教学页" },
   { id: "ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备助手完成页" },
   { id: "control", image: "home-03-control.png", width: 375, height: 956, label: "吸乳控制初始状态" },
+  ...calibrationScreens,
   { id: "pumping", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
   { id: "finished", image: "home-05-finished.png", width: 402, height: 874, label: "完成吸乳" },
   { id: "logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
@@ -51,6 +61,7 @@ const defaults = {
   pumpRunning: false,
   pumpPaused: false,
   sessionLogged: false,
+  comfortLevel: 4,
   leftVolume: 0,
   rightVolume: 0
 };
@@ -229,6 +240,99 @@ function connectionMarkup(screen) {
   return "";
 }
 
+function calibrationStepper(screenId) {
+  const statesByScreen = {
+    "check-initiation": ["current", "future", "future"],
+    "check-fit": ["complete", "current", "future"],
+    "check-fit-passed": ["complete", "complete", "future"],
+    "check-comfort": ["complete", "complete", "current"],
+    "check-comfort-found": ["complete", "complete", "complete"]
+  };
+  const states = statesByScreen[screenId];
+  const labels = ["Initiation", "Fit check", "Comfort"];
+  const track = states.map((status, index) => {
+    const step = `<span class="check-step ${status}" aria-current="${status === "current" ? "step" : "false"}">${index + 1}</span>`;
+    if (index === states.length - 1) return step;
+    return `${step}<span class="check-connector ${status === "complete" ? "complete" : ""}"></span>`;
+  }).join("");
+  const text = labels.map((label, index) => `<span class="check-step-label ${states[index]}">${label}</span>`).join("");
+  return `<div class="check-stepper" aria-label="设备检查进度"><div class="check-step-track">${track}</div><div class="check-step-labels">${text}</div></div>`;
+}
+
+function calibrationBody(screen) {
+  switch (screen.id) {
+    case "check-initiation":
+      return `<div class="check-body initiation-body">
+        <div class="check-reading"><strong>00:03</strong><span>Level 3</span></div>
+        <div class="check-progress"><span style="--progress:22%"></span></div>
+        <p class="check-progress-copy">Preparing for fit detection...</p>
+      </div>`;
+    case "check-fit":
+      return `<div class="check-body fit-body">
+        <div class="fit-cards">
+          <div class="fit-card checking"><strong>L</strong><span>Checking...</span></div>
+          <div class="fit-card checking"><strong>R</strong><span>Checking...</span></div>
+        </div>
+        <div class="check-progress"><span style="--progress:64%"></span></div>
+        <p class="check-progress-copy">Checking seal stability...</p>
+      </div>`;
+    case "check-fit-passed":
+      return `<div class="check-body passed-body">
+        <div class="fit-cards">
+          <div class="fit-card passed"><strong>L</strong><span>Good fit</span></div>
+          <div class="fit-card passed"><strong>R</strong><span>Good fit</span></div>
+        </div>
+        <div class="next-check-card"><span>Next · Step 3</span><strong>Find maximum comfortable suction</strong></div>
+      </div>`;
+    case "check-comfort":
+      return `<div class="check-body comfort-body">
+        <div class="comfort-control"><span>Current level</span><div><strong>${state.comfortLevel}</strong><small>of 12</small><button type="button" data-action="comfort-down" aria-label="降低负压">−</button><button type="button" class="primary" data-action="comfort-up" aria-label="提高负压">+</button></div></div>
+        <div class="comfort-tip positive"><strong>Still comfortable?</strong><span>Press + until mildly uncomfortable</span></div>
+        <div class="comfort-tip caution"><strong>Mildly uncomfortable?</strong><span>Press − once to return to comfort</span></div>
+      </div>`;
+    case "check-comfort-found":
+      return `<div class="check-body found-body">
+        <div class="comfort-result"><strong>${state.comfortLevel}</strong><span>Set level</span></div>
+        <div class="comfort-sides"><span><b>L</b> Level ${state.comfortLevel}</span><span><b>R</b> Level ${state.comfortLevel}</span></div>
+      </div>`;
+    default:
+      return "";
+  }
+}
+
+function calibrationFooter(screen) {
+  switch (screen.id) {
+    case "check-fit-passed":
+      return `<button type="button" class="check-primary-action" data-action="calibration-next">Continue</button>`;
+    case "check-comfort":
+      return `<button type="button" class="check-primary-action" data-action="calibration-next">Confirm this level</button><button type="button" class="check-text-action" data-action="calibration-close">Exit setup</button>`;
+    case "check-comfort-found":
+      return `<button type="button" class="check-text-action" data-action="calibration-test-again">Test again</button><button type="button" class="check-primary-action" data-action="calibration-start-pump">Start pumping</button>`;
+    default:
+      return "";
+  }
+}
+
+function calibrationMarkup(screen) {
+  if (!screen.calibration) return "";
+  const headings = {
+    "check-initiation": ["Initiation", "Running the milk-initiation rhythm"],
+    "check-fit": ["Fit check", "Keep still while both sides are checked."],
+    "check-fit-passed": ["Fit check passed", "Both pumps have a stable seal."],
+    "check-comfort": ["Find your comfort level", "Adjust slowly and stop if it hurts."],
+    "check-comfort-found": ["Comfort level found", "Maximum comfortable suction is set."]
+  };
+  const [title, subtitle] = headings[screen.id];
+  return `<div class="calibration-shade" aria-hidden="true"></div>
+    <section class="calibration-modal ${screen.id}" aria-label="${title}">
+      <button type="button" class="calibration-close" data-action="calibration-close" aria-label="关闭检查">${icon("x", "关闭检查")}</button>
+      ${calibrationStepper(screen.id)}
+      <header class="check-heading"><h1>${title}</h1><p>${subtitle}</p></header>
+      ${calibrationBody(screen)}
+      <footer class="check-footer">${calibrationFooter(screen)}</footer>
+    </section>`;
+}
+
 function screenMarkup(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
@@ -256,10 +360,11 @@ function screenMarkup(kind) {
         <button type="button" class="pump-pause ${state.pumpPaused ? "paused" : ""}" data-action="toggle-pump-pause" aria-label="${state.pumpPaused ? "继续吸乳" : "暂停吸乳"}" aria-pressed="${state.pumpPaused}">${state.pumpPaused ? icon("play", "继续吸乳") : '<img src="./assets/figma-755/pump-pause.svg" width="20" height="20" alt="" draggable="false" />'}</button>
       </div>`
     : "";
-  const startControl = screen.image === "home-03-control.png"
+  const startControl = ["pump-control", "control"].includes(screen.id)
     ? `<button type="button" class="start-pumping-floating" data-action="${kind === "hospital" ? "hospital-start-pump" : "start-pump"}">Start Pumping</button>`
     : "";
   const connection = kind === "home" ? connectionMarkup(screen) : "";
+  const calibration = calibrationMarkup(screen);
   return `<div class="screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}">
     <div class="screen-scroll">
       <div class="screen-canvas">
@@ -271,6 +376,7 @@ function screenMarkup(kind) {
       </div>
     </div>
     ${connection}
+    ${calibration}
     ${startControl}
     ${holdControl}
   </div>`;
@@ -303,12 +409,12 @@ function prototypeNavigation(kind) {
     ? [
         { label: "设备连接", icon: "link-2", start: 0, end: 6 },
         { label: "设备教学", icon: "book-open", start: 7, end: 10 },
-        { label: "吸乳与记录", icon: "activity", start: 11, end: 16 }
+        { label: "吸乳与记录", icon: "activity", start: 11, end: hospitalScreens.length - 1 }
       ]
     : [
         { label: "连接设备", icon: "link-2", start: 0, end: 4 },
         { label: "使用教学", icon: "book-open", start: 5, end: 7 },
-        { label: "吸乳与记录", icon: "activity", start: 8, end: 13 }
+        { label: "吸乳与记录", icon: "activity", start: 8, end: homeScreens.length - 1 }
       ];
   const items = groups.map(group => {
     const children = screens.slice(group.start, group.end + 1).map((screen, offset) => {
@@ -368,6 +474,17 @@ function render() {
   if (!directNavigation && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
     transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功"), 1500);
   }
+  if (!directNavigation && ["hospital", "home"].includes(ENTRY)) {
+    const screens = ENTRY === "hospital" ? hospitalScreens : homeScreens;
+    const key = `${ENTRY}Step`;
+    const currentId = screens[state[key]].id;
+    if (currentId === "check-initiation") {
+      transitionTimer = setTimeout(() => setState({ [key]: screens.findIndex(screen => screen.id === "check-fit") }), 1600);
+    }
+    if (currentId === "check-fit") {
+      transitionTimer = setTimeout(() => setState({ [key]: screens.findIndex(screen => screen.id === "check-fit-passed") }), 1800);
+    }
+  }
   if (!directNavigation && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
     transitionTimer = setTimeout(() => setState({
       hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard")
@@ -393,20 +510,21 @@ function handleAction(action, target) {
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
       const key = `${kind}Step`;
       const step = Math.max(0, Math.min(screens.length - 1, Number(target.dataset.step) || 0));
+      const currentId = screens[step].id;
       const progress = kind === "hospital"
         ? {
             deviceBound: step >= 6,
             trainingDone: step >= 11,
-            pumpRunning: screens[step].id === "pump-running",
+            pumpRunning: currentId === "pump-running",
             pumpPaused: false,
-            sessionLogged: step >= 14
+            sessionLogged: ["pump-logged", "pump-dashboard", "device-home"].includes(currentId)
           }
         : {
             homeDeviceConnected: step >= 4,
             trainingDone: step >= 8,
-            pumpRunning: screens[step].id === "pumping",
+            pumpRunning: currentId === "pumping",
             pumpPaused: false,
-            sessionLogged: step >= 11
+            sessionLogged: ["logged", "dashboard", "device"].includes(currentId)
           };
       navigationOpen = false;
       directNavigation = true;
@@ -422,7 +540,7 @@ function handleAction(action, target) {
     case "hospital-training-exit": setState({ hospitalStep: 6 }); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
     case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "院端设备教学已完成"); break;
-    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-running"), pumpRunning: true, pumpPaused: false }, "V4 已开始吸乳"); break;
+    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }); break;
     case "hospital-finish-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false }); break;
     case "hospital-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
     case "hospital-left-down": setState({ leftVolume: Math.max(0, state.leftVolume - 10) }); break;
@@ -439,7 +557,36 @@ function handleAction(action, target) {
     case "home-next": setState({ homeStep: Math.min(homeScreens.length - 1, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
-    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "pumping"), pumpRunning: true, pumpPaused: false }, "V4 已开始吸乳"); break;
+    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }); break;
+    case "calibration-next": {
+      const kind = ENTRY === "hospital" ? "hospital" : "home";
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const key = `${kind}Step`;
+      setState({ [key]: Math.min(screens.length - 1, state[key] + 1) });
+      break;
+    }
+    case "calibration-close": {
+      const kind = ENTRY === "hospital" ? "hospital" : "home";
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const controlId = kind === "hospital" ? "pump-control" : "control";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === controlId) });
+      break;
+    }
+    case "calibration-test-again": {
+      const kind = ENTRY === "hospital" ? "hospital" : "home";
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort") });
+      break;
+    }
+    case "comfort-down": setState({ comfortLevel: Math.max(1, state.comfortLevel - 1) }); break;
+    case "comfort-up": setState({ comfortLevel: Math.min(12, state.comfortLevel + 1) }); break;
+    case "calibration-start-pump": {
+      const kind = ENTRY === "hospital" ? "hospital" : "home";
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const pumpingId = kind === "hospital" ? "pump-running" : "pumping";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === pumpingId), pumpRunning: true, pumpPaused: false }, "V4 已开始吸乳");
+      break;
+    }
     case "finish-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "finished"), pumpRunning: false, pumpPaused: false }); break;
     case "toggle-pump-pause": setState({ pumpPaused: !state.pumpPaused }, state.pumpPaused ? "继续吸乳" : "吸乳已暂停"); break;
     case "save-session": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "logged"), sessionLogged: true }, "吸乳记录已保存"); break;
