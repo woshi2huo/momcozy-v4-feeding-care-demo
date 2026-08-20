@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.9";
+const VERSION = "0.3.10";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -243,6 +243,9 @@ function screenMarkup(kind) {
   const deviceOverlay = screen.image === "home-07-dashboard.png"
     ? `<span class="dashboard-device-frame" aria-hidden="true"><img src="./assets/figma-755/home-dashboard-v3-device.png" width="138" height="104" alt="" draggable="false" /></span>`
     : "";
+  const pumpControlDevice = screen.image === "home-03-control.png"
+    ? `<span class="pump-control-device" aria-hidden="true"><img src="./assets/figma-755/home-pump-control-device.png" width="182" height="138" alt="" draggable="false" /></span>`
+    : "";
   const finishAction = screen.id === "pump-running" ? "hospital-finish-pump" : screen.id === "pumping" ? "finish-pump" : "";
   const holdControl = finishAction
     ? `<button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to finish</span></button>`
@@ -253,6 +256,7 @@ function screenMarkup(kind) {
       <div class="screen-canvas">
         <img class="figma-screen" src="./assets/figma-755/${screen.image}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
         ${deviceOverlay}
+        ${pumpControlDevice}
         <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
       </div>
     </div>
