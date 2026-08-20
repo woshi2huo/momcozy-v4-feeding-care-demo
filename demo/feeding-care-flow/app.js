@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.12";
+const VERSION = "0.3.13";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -48,6 +48,7 @@ const defaults = {
   trainingDone: false,
   codeDigit: "",
   pumpRunning: false,
+  pumpPaused: false,
   sessionLogged: false,
   leftVolume: 0,
   rightVolume: 0
@@ -237,7 +238,7 @@ function screenMarkup(kind) {
     ? `<span class="volume-value left" aria-live="polite">${state.leftVolume}<small>ml</small></span><span class="volume-value right" aria-live="polite">${state.rightVolume}<small>ml</small></span>`
     : "";
   const deviceOverlay = screen.image === "home-07-dashboard.png"
-    ? `<span class="dashboard-device-frame" aria-hidden="true"><img src="./assets/figma-755/home-dashboard-v3-device.png" width="138" height="104" alt="" draggable="false" /></span>`
+    ? `<span class="dashboard-device-frame" aria-hidden="true"><img src="./assets/figma-755/home-pump-control-device.png" width="182" height="138" alt="" draggable="false" /></span>`
     : "";
   const pumpControlDevice = screen.image === "home-03-control.png"
     ? `<span class="pump-control-device" aria-hidden="true"><img src="./assets/figma-755/home-pump-control-device.png" width="182" height="138" alt="" draggable="false" /></span>`
@@ -247,7 +248,10 @@ function screenMarkup(kind) {
     : "";
   const finishAction = screen.id === "pump-running" ? "hospital-finish-pump" : screen.id === "pumping" ? "finish-pump" : "";
   const holdControl = finishAction
-    ? `<button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to finish</span></button>`
+    ? `<div class="pumping-actions">
+        <button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to Finish</span></button>
+        <button type="button" class="pump-pause ${state.pumpPaused ? "paused" : ""}" data-action="toggle-pump-pause" aria-label="${state.pumpPaused ? "继续吸乳" : "暂停吸乳"}" aria-pressed="${state.pumpPaused}">${state.pumpPaused ? icon("play", "继续吸乳") : '<img src="./assets/figma-755/pump-pause.svg" width="20" height="20" alt="" draggable="false" />'}</button>
+      </div>`
     : "";
   const startControl = screen.image === "home-03-control.png"
     ? `<button type="button" class="start-pumping-floating" data-action="${kind === "hospital" ? "hospital-start-pump" : "start-pump"}">Start Pumping</button>`
@@ -256,7 +260,7 @@ function screenMarkup(kind) {
   return `<div class="screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}">
     <div class="screen-scroll">
       <div class="screen-canvas">
-        <img class="figma-screen" src="./assets/figma-755/${screen.image}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
+        <img class="figma-screen" src="./assets/figma-755/${screen.image}?v=${VERSION}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
         ${deviceOverlay}
         ${pumpControlDevice}
         ${pumpControlButtonMask}
@@ -274,8 +278,8 @@ function prototypeToolbar(kind) {
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
   const screenId = screens[step].id;
   const status = kind === "hospital"
-    ? (state.sessionLogged ? "吸乳记录已完成" : state.pumpRunning ? "正在吸乳" : step >= 11 ? "设备已就绪" : state.trainingDone ? "设备教学已完成" : state.deviceBound ? (step >= 7 ? "设备教学中" : "V4 已绑定") : "院端独立演示")
-    : (state.sessionLogged ? "本次记录已保存" : state.pumpRunning ? "正在吸乳" : screenId === "connect-connecting" ? "正在连接 V4" : screenId === "connect-done" ? "V4 连接完成" : state.homeDeviceConnected ? "V4 已连接" : "等待连接 V4");
+    ? (state.sessionLogged ? "吸乳记录已完成" : state.pumpRunning ? (state.pumpPaused ? "吸乳已暂停" : "正在吸乳") : step >= 11 ? "设备已就绪" : state.trainingDone ? "设备教学已完成" : state.deviceBound ? (step >= 7 ? "设备教学中" : "V4 已绑定") : "院端独立演示")
+    : (state.sessionLogged ? "本次记录已保存" : state.pumpRunning ? (state.pumpPaused ? "吸乳已暂停" : "正在吸乳") : screenId === "connect-connecting" ? "正在连接 V4" : screenId === "connect-done" ? "V4 连接完成" : state.homeDeviceConnected ? "V4 已连接" : "等待连接 V4");
   const ready = kind === "home" ? state.homeDeviceConnected : state.deviceBound;
   return `<div class="prototype-toolbar">
     <button class="tool-button navigation-trigger" data-action="navigation-open" title="打开 Demo 目录" aria-label="打开 Demo 目录" aria-expanded="${navigationOpen}">${icon("panel-left", "打开 Demo 目录")}</button>
@@ -389,12 +393,14 @@ function handleAction(action, target) {
             deviceBound: step >= 6,
             trainingDone: step >= 11,
             pumpRunning: screens[step].id === "pump-running",
+            pumpPaused: false,
             sessionLogged: step >= 14
           }
         : {
             homeDeviceConnected: step >= 4,
             trainingDone: step >= 8,
             pumpRunning: screens[step].id === "pumping",
+            pumpPaused: false,
             sessionLogged: step >= 11
           };
       navigationOpen = false;
@@ -411,8 +417,8 @@ function handleAction(action, target) {
     case "hospital-training-exit": setState({ hospitalStep: 6 }); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
     case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "院端设备教学已完成"); break;
-    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-running"), pumpRunning: true }, "V4 已开始吸乳"); break;
-    case "hospital-finish-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false }); break;
+    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-running"), pumpRunning: true, pumpPaused: false }, "V4 已开始吸乳"); break;
+    case "hospital-finish-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false }); break;
     case "hospital-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
     case "hospital-left-down": setState({ leftVolume: Math.max(0, state.leftVolume - 10) }); break;
     case "hospital-right-up": setState({ rightVolume: Math.min(300, state.rightVolume + 10) }); break;
@@ -427,8 +433,9 @@ function handleAction(action, target) {
     case "home-next": setState({ homeStep: Math.min(homeScreens.length - 1, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
-    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "pumping"), pumpRunning: true }, "V4 已开始吸乳"); break;
-    case "finish-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "finished"), pumpRunning: false }); break;
+    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "pumping"), pumpRunning: true, pumpPaused: false }, "V4 已开始吸乳"); break;
+    case "finish-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "finished"), pumpRunning: false, pumpPaused: false }); break;
+    case "toggle-pump-pause": setState({ pumpPaused: !state.pumpPaused }, state.pumpPaused ? "继续吸乳" : "吸乳已暂停"); break;
     case "save-session": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "logged"), sessionLogged: true }, "吸乳记录已保存"); break;
     case "show-dashboard": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "dashboard") }); break;
     case "home-device": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "device") }); break;
