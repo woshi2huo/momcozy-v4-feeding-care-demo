@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.11";
+const VERSION = "0.3.12";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -156,8 +156,7 @@ function hospitalHotspots(screen) {
       ].join("");
     case "training-ready":
       return hotspot("hospital-open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
-    case "pump-control":
-      return hotspot("hospital-start-pump", "开始吸乳", 6.3, 91.2, 87.4, 5.6);
+    case "pump-control": return "";
     case "pump-running": return "";
     case "pump-finished":
       return [
@@ -190,10 +189,7 @@ function homeHotspots(screen) {
       ].join("");
     case "ready": return hotspot("home-next", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
     case "control":
-      return [
-        hotspot("start-pump", "开始吸乳", 6.3, 91.2, 87.4, 5.6),
-        hotspot("home-device", "返回设备页", 3.5, 4.3, 9.0, 4.8)
-      ].join("");
+      return hotspot("home-device", "返回设备页", 3.5, 4.3, 9.0, 4.8);
     case "pumping": return "";
     case "finished": return hotspot("save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2);
     case "logged": return hotspot("show-dashboard", "查看吸乳数据", 0, 0, 100, 100);
@@ -246,6 +242,9 @@ function screenMarkup(kind) {
   const pumpControlDevice = screen.image === "home-03-control.png"
     ? `<span class="pump-control-device" aria-hidden="true"><img src="./assets/figma-755/home-pump-control-device.png" width="182" height="138" alt="" draggable="false" /></span>`
     : "";
+  const pumpControlButtonMask = screen.image === "home-03-control.png"
+    ? `<span class="pump-control-native-button-mask" aria-hidden="true"></span>`
+    : "";
   const finishAction = screen.id === "pump-running" ? "hospital-finish-pump" : screen.id === "pumping" ? "finish-pump" : "";
   const holdControl = finishAction
     ? `<button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to finish</span></button>`
@@ -260,6 +259,7 @@ function screenMarkup(kind) {
         <img class="figma-screen" src="./assets/figma-755/${screen.image}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
         ${deviceOverlay}
         ${pumpControlDevice}
+        ${pumpControlButtonMask}
         <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
       </div>
     </div>

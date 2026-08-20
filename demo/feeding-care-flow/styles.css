@@ -73,6 +73,7 @@ button:disabled { cursor: default; opacity: .35; }
 .dashboard-device-frame img { position: absolute; left: 1.11%; top: 12.22%; width: 97.78%; height: 72.22%; object-fit: cover; }
 .pump-control-device { position: absolute; z-index: 1; left: 23.733333%; top: 11.297071%; width: 48.533333%; height: 14.435146%; overflow: hidden; pointer-events: none; }
 .pump-control-device img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pump-control-native-button-mask { position: absolute; z-index: 2; top: 88.912134%; right: 0; left: 0; height: 9.100418%; background: linear-gradient(180deg, #faf5f6 0%, #faf4f5 100%); pointer-events: none; }
 .hotspot-layer { position: absolute; inset: 0; }
 .hotspot { position: absolute; left: calc(var(--x) * 1%); top: calc(var(--y) * 1%); width: calc(var(--w) * 1%); height: calc(var(--h) * 1%); padding: 0; border: 0; border-radius: 999px; background: transparent; }
 .hotspot:hover { background: rgba(255,255,255,.09); box-shadow: inset 0 0 0 2px rgba(143,0,39,.12); }
