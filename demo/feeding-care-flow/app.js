@@ -1,8 +1,6 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.3.18";
-const STORAGE_KEY = ENTRY === "home"
-  ? `momcozy-figma-755-demo-v${VERSION}-home`
-  : `momcozy-figma-755-demo-v3-${ENTRY}`;
+const VERSION = "0.3.19";
+const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const calibrationScreens = [
   { id: "check-wear", image: "home-03-control.png", width: 375, height: 956, label: "穿戴检测提示", wearPrompt: true },
@@ -64,7 +62,8 @@ const defaults = {
   sessionLogged: false,
   comfortLevel: 4,
   leftVolume: 0,
-  rightVolume: 0
+  rightVolume: 0,
+  autoAdvanceSuppressed: ""
 };
 
 let state = loadState();
@@ -74,6 +73,8 @@ let holdTarget = null;
 let navigationOpen = false;
 let directNavigation = false;
 let previousCheckScreenId = null;
+let suppressStepHistory = false;
+const stepHistory = { hospital: [], home: [] };
 
 function loadState() {
   try {
@@ -91,6 +92,10 @@ function saveState() {
 }
 
 function setState(patch, message) {
+  const stepKey = `${ENTRY}Step`;
+  if (!suppressStepHistory && Object.hasOwn(patch, stepKey) && patch[stepKey] !== state[stepKey]) {
+    stepHistory[ENTRY].push(state[stepKey]);
+  }
   state = { ...state, ...patch };
   saveState();
   render();
@@ -135,6 +140,19 @@ function icon(name, label) {
 
 function hotspot(action, label, x, y, width, height, extra = "") {
   return `<button class="hotspot" data-action="${action}" aria-label="${label}" title="${label}" style="--x:${x};--y:${y};--w:${width};--h:${height}" ${extra}></button>`;
+}
+
+function screenBackHotspot(kind, screen) {
+  const backScreens = kind === "hospital"
+    ? new Set(["manual", "found", "scan", "code", "binding", "success", "pump-control", "pump-running", "pump-finished", "pump-dashboard"])
+    : new Set(["control", "pumping", "finished", "dashboard"]);
+  if (!backScreens.has(screen.id)) return "";
+  const position = screen.id === "pump-finished" || screen.id === "finished"
+    ? [2.5, 34.8, 13.5, 7.0]
+    : screen.id === "code"
+      ? [6.5, 7.5, 13.5, 6.5]
+      : [2.0, 4.0, 13.5, 7.0];
+  return hotspot("screen-back", "返回上一个页面", ...position, `data-kind="${kind}"`);
 }
 
 function hospitalHotspots(screen) {
@@ -187,8 +205,7 @@ function hospitalHotspots(screen) {
       ].join("");
     case "pump-logged":
       return hotspot("hospital-show-dashboard", "查看吸乳子场景卡", 0, 0, 100, 100);
-    case "pump-dashboard":
-      return hotspot("hospital-return-device", "返回设备子首页", 3.8, 7.1, 11.0, 5.2);
+    case "pump-dashboard": return "";
     default: return "";
   }
 }
@@ -209,8 +226,7 @@ function homeHotspots(screen) {
         hotspot("home-next", "下一步", 37.6, 89.5, 58.4, 6.7)
       ].join("");
     case "ready": return hotspot("home-next", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
-    case "control":
-      return hotspot("home-device", "返回设备页", 3.5, 4.3, 9.0, 4.8);
+    case "control": return "";
     case "pumping":
       return [
         hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
@@ -218,11 +234,7 @@ function homeHotspots(screen) {
       ].join("");
     case "finished": return hotspot("save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2);
     case "logged": return hotspot("show-dashboard", "查看吸乳数据", 0, 0, 100, 100);
-    case "dashboard":
-      return [
-        hotspot("home-device", "返回设备页", 3.8, 4.3, 11.0, 5.2),
-        hotspot("home-control", "开始 Milk Boost", 72.0, 90.2, 22.0, 6.7)
-      ].join("");
+    case "dashboard": return hotspot("home-control", "开始 Milk Boost", 72.0, 90.2, 22.0, 6.7);
     case "device": return hotspot("home-control", "打开吸乳器控制", 4.0, 14.3, 92.0, 32.8);
     default: return "";
   }
@@ -363,7 +375,8 @@ function screenMarkup(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
   const screen = screens[step];
-  const hotspots = kind === "hospital" ? hospitalHotspots(screen) : homeHotspots(screen);
+  const pageHotspots = kind === "hospital" ? hospitalHotspots(screen) : homeHotspots(screen);
+  const hotspots = `${screenBackHotspot(kind, screen)}${pageHotspots}`;
   const digit = screen.id === "code" && state.codeDigit
     ? `<span class="code-digit" aria-hidden="true">${state.codeDigit}</span><span class="next-enabled" aria-hidden="true">Next</span>`
     : "";
@@ -496,37 +509,76 @@ function render() {
   requestAnimationFrame(() => {
     app.querySelector(".navigation-item.active")?.scrollIntoView({ block: "nearest" });
   });
-  if (!directNavigation && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
+  if (!directNavigation && state.autoAdvanceSuppressed !== "hospital:binding" && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
     transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功"), 1500);
   }
   if (!directNavigation && ["hospital", "home"].includes(ENTRY)) {
     const screens = ENTRY === "hospital" ? hospitalScreens : homeScreens;
     const key = `${ENTRY}Step`;
     const currentId = screens[state[key]].id;
-    if (currentId === "check-initiation") {
+    if (currentId === "check-initiation" && state.autoAdvanceSuppressed !== `${ENTRY}:check-initiation`) {
       transitionTimer = setTimeout(() => setState({ [key]: screens.findIndex(screen => screen.id === "check-fit") }), 1600);
     }
-    if (currentId === "check-fit") {
+    if (currentId === "check-fit" && state.autoAdvanceSuppressed !== `${ENTRY}:check-fit`) {
       transitionTimer = setTimeout(() => setState({ [key]: screens.findIndex(screen => screen.id === "check-fit-passed") }), 1800);
     }
   }
-  if (!directNavigation && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
+  if (!directNavigation && state.autoAdvanceSuppressed !== "hospital:pump-logged" && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
     transitionTimer = setTimeout(() => setState({
       hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard")
     }), 1600);
   }
-  if (!directNavigation && ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
+  if (!directNavigation && state.autoAdvanceSuppressed !== "home:connect-connecting" && ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
     transitionTimer = setTimeout(() => setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-done") }), 1400);
   }
-  if (!directNavigation && ENTRY === "home" && homeScreens[state.homeStep].id === "logged") {
+  if (!directNavigation && state.autoAdvanceSuppressed !== "home:logged" && ENTRY === "home" && homeScreens[state.homeStep].id === "logged") {
     transitionTimer = setTimeout(() => setState({
       homeStep: homeScreens.findIndex(screen => screen.id === "dashboard")
     }), 1600);
   }
 }
 
+function progressForStep(kind, step) {
+  const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+  const currentId = screens[step].id;
+  if (kind === "hospital") {
+    return {
+      deviceBound: step >= 6,
+      trainingDone: step >= 11,
+      pumpRunning: currentId === "pump-running",
+      pumpPaused: false,
+      sessionLogged: ["pump-logged", "pump-dashboard", "device-home"].includes(currentId)
+    };
+  }
+  return {
+    homeDeviceConnected: step >= 4,
+    trainingDone: step >= 8,
+    pumpRunning: currentId === "pumping",
+    pumpPaused: false,
+    sessionLogged: ["logged", "dashboard", "device"].includes(currentId)
+  };
+}
+
+function goToPreviousScreen(kind) {
+  const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+  const key = `${kind}Step`;
+  const fallback = Math.max(0, state[key] - 1);
+  const previousStep = stepHistory[kind].pop() ?? fallback;
+  directNavigation = true;
+  suppressStepHistory = true;
+  setState({
+    [key]: previousStep,
+    ...progressForStep(kind, previousStep),
+    autoAdvanceSuppressed: `${kind}:${screens[previousStep].id}`
+  });
+  suppressStepHistory = false;
+}
+
 function handleAction(action, target) {
-  if (!["navigation-open", "navigation-close", "navigation-step"].includes(action)) directNavigation = false;
+  if (!["navigation-open", "navigation-close", "navigation-step", "screen-back"].includes(action)) {
+    directNavigation = false;
+    state = { ...state, autoAdvanceSuppressed: "" };
+  }
   switch (action) {
     case "navigation-open": navigationOpen = true; render(); break;
     case "navigation-close": navigationOpen = false; render(); break;
@@ -536,26 +588,12 @@ function handleAction(action, target) {
       const key = `${kind}Step`;
       const step = Math.max(0, Math.min(screens.length - 1, Number(target.dataset.step) || 0));
       const currentId = screens[step].id;
-      const progress = kind === "hospital"
-        ? {
-            deviceBound: step >= 6,
-            trainingDone: step >= 11,
-            pumpRunning: currentId === "pump-running",
-            pumpPaused: false,
-            sessionLogged: ["pump-logged", "pump-dashboard", "device-home"].includes(currentId)
-          }
-        : {
-            homeDeviceConnected: step >= 4,
-            trainingDone: step >= 8,
-            pumpRunning: currentId === "pumping",
-            pumpPaused: false,
-            sessionLogged: ["logged", "dashboard", "device"].includes(currentId)
-          };
       navigationOpen = false;
       directNavigation = true;
-      setState({ [key]: step, ...progress });
+      setState({ [key]: step, ...progressForStep(kind, step), autoAdvanceSuppressed: `${kind}:${currentId}` });
       break;
     }
+    case "screen-back": goToPreviousScreen(target.dataset.kind); break;
     case "hospital-next": setState({ hospitalStep: Math.min(hospitalScreens.length - 1, state.hospitalStep + 1) }); break;
     case "hospital-prev": setState({ hospitalStep: Math.max(0, state.hospitalStep - 1) }); break;
     case "enter-code": if (!state.codeDigit) setState({ codeDigit: "4" }, "验证码已填写"); break;
@@ -640,6 +678,8 @@ function handleAction(action, target) {
     }
     case "reset":
       state = { ...defaults };
+      stepHistory.hospital = [];
+      stepHistory.home = [];
       saveState();
       render();
       showToast("流程已重置");
