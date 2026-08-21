@@ -1,10 +1,11 @@
 const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.15";
+const VERSION = "0.3.16";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
 
 const calibrationScreens = [
+  { id: "check-wear", image: "home-03-control.png", width: 375, height: 956, label: "穿戴检测提示", wearPrompt: true },
   { id: "check-initiation", image: "home-03-control.png", width: 375, height: 956, label: "检查 1 · 泌乳启动", calibration: true },
   { id: "check-fit", image: "home-03-control.png", width: 375, height: 956, label: "检查 2 · 佩戴检测", calibration: true },
   { id: "check-fit-passed", image: "home-03-control.png", width: 375, height: 956, label: "检查 2 · 佩戴通过", calibration: true },
@@ -72,6 +73,7 @@ let holdTimer = null;
 let holdTarget = null;
 let navigationOpen = false;
 let directNavigation = false;
+let previousCheckScreenId = null;
 
 function loadState() {
   try {
@@ -313,8 +315,24 @@ function calibrationFooter(screen) {
   }
 }
 
-function calibrationMarkup(screen) {
-  if (!screen.calibration) return "";
+function calibrationMarkup(screen, motion = {}) {
+  if (!screen.calibration && !screen.wearPrompt) return "";
+  const motionClasses = [motion.entering ? "is-entering" : "", motion.stepChanging ? "is-step-changing" : ""].filter(Boolean).join(" ");
+  if (screen.wearPrompt) {
+    return `<div class="calibration-shade ${motion.entering ? "is-entering" : ""}" aria-hidden="true"></div>
+      <section class="calibration-modal check-wear ${motionClasses}" role="dialog" aria-modal="true" aria-label="Wear both pumps">
+        <button type="button" class="calibration-close" data-action="calibration-close" aria-label="关闭穿戴提示">${icon("x", "关闭穿戴提示")}</button>
+        <span class="wear-kicker">Before pumping</span>
+        <header class="wear-heading"><h1>Wear both pumps</h1><p>Follow the steps below, then keep still.</p></header>
+        <ol class="wear-steps">
+          <li><span>1</span><strong>Assemble the milk collector</strong></li>
+          <li><span>2</span><strong>Center the nipple in the flange</strong></li>
+          <li><span>3</span><strong>Secure both pumps inside your bra</strong></li>
+        </ol>
+        <p class="wear-note">Press Start and remain still during the check.</p>
+        <footer class="check-footer"><button type="button" class="check-primary-action" data-action="calibration-start-check">Start initiation</button></footer>
+      </section>`;
+  }
   const headings = {
     "check-initiation": ["Initiation", "Running the milk-initiation rhythm"],
     "check-fit": ["Fit check", "Keep still while both sides are checked."],
@@ -323,8 +341,8 @@ function calibrationMarkup(screen) {
     "check-comfort-found": ["Comfort level found", "Maximum comfortable suction is set."]
   };
   const [title, subtitle] = headings[screen.id];
-  return `<div class="calibration-shade" aria-hidden="true"></div>
-    <section class="calibration-modal ${screen.id}" aria-label="${title}">
+  return `<div class="calibration-shade ${motion.entering ? "is-entering" : ""}" aria-hidden="true"></div>
+    <section class="calibration-modal ${screen.id} ${motionClasses}" role="dialog" aria-modal="true" aria-label="${title}">
       <button type="button" class="calibration-close" data-action="calibration-close" aria-label="关闭检查">${icon("x", "关闭检查")}</button>
       ${calibrationStepper(screen.id)}
       <header class="check-heading"><h1>${title}</h1><p>${subtitle}</p></header>
@@ -364,8 +382,12 @@ function screenMarkup(kind) {
     ? `<button type="button" class="start-pumping-floating" data-action="${kind === "hospital" ? "hospital-start-pump" : "start-pump"}">Start Pumping</button>`
     : "";
   const connection = kind === "home" ? connectionMarkup(screen) : "";
-  const calibration = calibrationMarkup(screen);
-  return `<div class="screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}">
+  const checkSheetVisible = Boolean(screen.calibration || screen.wearPrompt);
+  const calibrationEntering = checkSheetVisible && previousCheckScreenId === null;
+  const calibrationStepChanging = checkSheetVisible && previousCheckScreenId !== null && previousCheckScreenId !== screen.id;
+  const calibration = calibrationMarkup(screen, { entering: calibrationEntering, stepChanging: calibrationStepChanging });
+  previousCheckScreenId = checkSheetVisible ? screen.id : null;
+  return `<div class="screen-frame ${checkSheetVisible ? "calibration-open" : ""}" style="--content-width:${screen.width};--content-height:${screen.height}">
     <div class="screen-scroll">
       <div class="screen-canvas">
         <img class="figma-screen" src="./assets/figma-755/${screen.image}?v=${VERSION}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
@@ -540,7 +562,7 @@ function handleAction(action, target) {
     case "hospital-training-exit": setState({ hospitalStep: 6 }); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
     case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "院端设备教学已完成"); break;
-    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }); break;
+    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-wear"), pumpRunning: false, pumpPaused: false }); break;
     case "hospital-finish-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false }); break;
     case "hospital-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
     case "hospital-left-down": setState({ leftVolume: Math.max(0, state.leftVolume - 10) }); break;
@@ -557,7 +579,13 @@ function handleAction(action, target) {
     case "home-next": setState({ homeStep: Math.min(homeScreens.length - 1, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
-    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }); break;
+    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-wear"), pumpRunning: false, pumpPaused: false }); break;
+    case "calibration-start-check": {
+      const kind = ENTRY === "hospital" ? "hospital" : "home";
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-initiation") });
+      break;
+    }
     case "calibration-next": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
