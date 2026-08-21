@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.3.19";
+const VERSION = "0.3.20";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const calibrationScreens = [
@@ -42,6 +42,12 @@ const homeScreens = [
   { id: "guide", image: "home-01-guide.png", width: 393, height: 852, label: "设备助手教学页" },
   { id: "ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备助手完成页" },
   { id: "control", image: "home-03-control.png", width: 375, height: 956, label: "吸乳控制初始状态" },
+  { id: "mode-list", custom: true, width: 402, height: 874, label: "模式列表" },
+  { id: "mode-name", custom: true, width: 402, height: 874, label: "新模式命名" },
+  { id: "mode-overview", custom: true, width: 402, height: 874, label: "分段模式总览" },
+  { id: "mode-editor", custom: true, width: 402, height: 874, label: "分段参数编辑" },
+  { id: "mode-overview-complete", custom: true, width: 402, height: 874, label: "完整模式预览" },
+  { id: "mode-introduction", custom: true, width: 402, height: 874, label: "模式介绍弹窗" },
   ...calibrationScreens,
   { id: "pumping", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
   { id: "finished", image: "home-05-finished.png", width: 402, height: 874, label: "完成吸乳" },
@@ -61,6 +67,15 @@ const defaults = {
   pumpPaused: false,
   sessionLogged: false,
   comfortLevel: 4,
+  customModeName: "Milk Collection Mode-01",
+  customModeSaved: false,
+  modeEditingSection: 1,
+  modeTrialPlaying: false,
+  modeLightOn: true,
+  customModeSections: [
+    { type: "Massage", level: 1, frequency: 1, light: "Clear", duration: 10 },
+    { type: "Breast pumping", level: 1, frequency: 5, light: "Clear", duration: 15 }
+  ],
   leftVolume: 0,
   rightVolume: 0,
   autoAdvanceSuppressed: ""
@@ -136,6 +151,16 @@ function showToast(message) {
 
 function icon(name, label) {
   return `<i data-lucide="${name}" aria-hidden="true"></i><span class="sr-only">${label}</span>`;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;"
+  })[character]);
 }
 
 function hotspot(action, label, x, y, width, height, extra = "") {
@@ -226,7 +251,7 @@ function homeHotspots(screen) {
         hotspot("home-next", "下一步", 37.6, 89.5, 58.4, 6.7)
       ].join("");
     case "ready": return hotspot("home-next", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
-    case "control": return "";
+    case "control": return hotspot("home-mode-list", "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2);
     case "pumping":
       return [
         hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
@@ -371,10 +396,130 @@ function calibrationMarkup(screen, motion = {}) {
     </section>`;
 }
 
+function modeStatusBar() {
+  return `<div class="mode-statusbar" aria-hidden="true"><strong>9:41</strong><span>${icon("signal", "蜂窝网络")}${icon("wifi", "无线网络")}${icon("battery-full", "电量")}</span></div>`;
+}
+
+function modeHeader(title, options = {}) {
+  const backAction = options.backAction || "screen-back";
+  const backKind = backAction === "screen-back" ? 'data-kind="home"' : "";
+  const help = options.help
+    ? `<button type="button" class="mode-header-action" data-action="mode-open-introduction" aria-label="查看模式介绍">${icon("circle-help", "查看模式介绍")}</button>`
+    : "";
+  const close = options.close
+    ? `<button type="button" class="mode-header-action" data-action="mode-close-introduction" aria-label="关闭模式介绍">${icon("x", "关闭模式介绍")}</button>`
+    : help;
+  return `${modeStatusBar()}<header class="mode-header"><button type="button" class="mode-back" data-action="${backAction}" ${backKind} aria-label="返回上一个页面">${icon("chevron-left", "返回")}</button><h1>${title}</h1>${close}</header>`;
+}
+
+function modeListContent(interactive = true) {
+  const action = interactive ? 'data-action="mode-use-preset"' : "";
+  const createAction = interactive ? 'data-action="mode-start-create"' : "";
+  return `<div class="mode-list-content">
+    <p class="mode-list-kicker">Preset mode</p>
+    <div class="mode-list-stack">
+      <button type="button" class="mode-list-card selected" ${action} data-mode-name="Stimulation"><span><strong>Stimulation</strong><small>Quickly initiate milk release.</small></span>${icon("sparkles", "刺激模式")}</button>
+      <button type="button" class="mode-list-card" ${action} data-mode-name="Expression"><span><strong>Expression</strong><small>For regular milk expression.</small></span>${icon("droplets", "吸乳模式")}</button>
+      <button type="button" class="mode-list-card" ${action} data-mode-name="Mixed"><span><strong>Mixed</strong><small>Stimulation and pumping alternate.</small></span>${icon("blend", "混合模式")}</button>
+    </div>
+    <div class="mode-list-section-title"><p>Personalized</p><button type="button" ${createAction}>${icon("plus", "新建模式")}<span>Create</span></button></div>
+    <div class="mode-list-stack custom-list">
+      <button type="button" class="mode-custom-card" ${action} data-mode-name="Milk Boost Mode #1"><span><strong>Milk Boost Mode #1</strong><small>15 min · Massage / Mixed</small></span><b>Details</b></button>
+      <button type="button" class="mode-custom-card" ${action} data-mode-name="Milk Boost Mode #2"><span><strong>Milk Boost Mode #2</strong><small>20 min · Massage / Expression</small></span><b>Details</b></button>
+    </div>
+  </div>`;
+}
+
+function modeListScreen() {
+  return `<section class="mode-screen mode-list-screen">${modeHeader("List")}${modeListContent()}</section>`;
+}
+
+function modeNameScreen() {
+  return `<section class="mode-screen mode-name-screen">
+    <div class="mode-list-background">${modeHeader("List")}${modeListContent(false)}</div>
+    <div class="mode-name-shade" aria-hidden="true"></div>
+    <div class="mode-name-sheet" role="dialog" aria-modal="true" aria-label="New Mode">
+      <div class="mode-name-title"><button type="button" data-action="screen-back" data-kind="home">Cancel</button><strong>New Mode</strong><span></span></div>
+      <label><span>Mode name</span><input type="text" data-mode-name-input maxlength="28" value="${escapeHtml(state.customModeName)}" placeholder="Please enter the mode name" /></label>
+      <label><span>Description</span><textarea data-mode-description-input maxlength="80" placeholder="Describe how you want to use this mode">Boost milk supply with a gentle segmented rhythm.</textarea></label>
+      <button type="button" class="mode-primary" data-action="mode-save-name">Save</button>
+    </div>
+  </section>`;
+}
+
+function modeSectionRows(count) {
+  return state.customModeSections.slice(0, count).map((section, index) => {
+    return `<button type="button" class="mode-segment-row" data-action="mode-edit-section" data-section="${index + 1}">
+      <b>${String(index + 1).padStart(2, "0")}</b><span><strong>${escapeHtml(section.type)}</strong><small>${section.duration} min · Level ${section.level} · Frequency ${section.frequency}</small></span>${icon("chevron-right", "编辑此分段")}
+    </button>`;
+  }).join("");
+}
+
+function modeOverviewScreen(complete = false) {
+  const sectionCount = complete ? 2 : 1;
+  return `<section class="mode-screen mode-overview-screen">
+    ${modeHeader("Edit", { help: true })}
+    <div class="mode-overview-content">
+      <div class="mode-overview-heading"><span><strong>${escapeHtml(state.customModeName || "Personal-01")}</strong><small>Customized segmented suction mode</small></span><button type="button" data-action="mode-start-create">${icon("pencil", "修改名称")}</button></div>
+      <div class="mode-overview-title"><span>Segmented suction</span><small>${sectionCount} section${sectionCount > 1 ? "s" : ""} · ${state.customModeSections.slice(0, sectionCount).reduce((sum, section) => sum + section.duration, 0)} min</small></div>
+      <div class="mode-segment-list">${modeSectionRows(sectionCount)}</div>
+      ${complete ? "" : `<button type="button" class="mode-add-section" data-action="mode-add-section">${icon("plus-circle", "添加分段")}<span>Add Section</span></button>`}
+    </div>
+    <div class="mode-bottom-action"><button type="button" class="mode-primary" data-action="mode-save-to-control">Save</button></div>
+  </section>`;
+}
+
+function modeChoiceButtons(section) {
+  const choices = ["Massage", "Breast pumping", "Mixed 1", "Mixed 2", "Rest"];
+  return choices.map(choice => `<button type="button" class="${section.type === choice ? "active" : ""}" data-action="mode-select-type" data-value="${choice}"><span></span>${choice}</button>`).join("");
+}
+
+function modeEditorBody(interactive = true) {
+  const index = Math.max(0, Math.min(1, state.modeEditingSection - 1));
+  const section = state.customModeSections[index];
+  const disabled = interactive ? "" : "disabled";
+  const frequencies = [1, 2, 3, 4, 5].map(value => `<button type="button" class="${section.frequency === value ? "active" : ""}" data-action="mode-select-frequency" data-value="${value}" ${disabled}>${value}</button>`).join("");
+  const lights = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${section.light === value ? "active" : ""}" data-action="mode-select-light" data-value="${value}" ${disabled}>${value}</button>`).join("");
+  return `<div class="mode-editor-content">
+    <section class="mode-editor-card mode-type-card"><div class="mode-field-label"><strong>Mode</strong><span>${escapeHtml(section.type)}</span></div><div class="mode-choice-grid">${modeChoiceButtons(section)}</div></section>
+    <section class="mode-editor-card"><div class="mode-field-label"><strong>Level</strong><span>${section.level} / 12</span></div><div class="mode-stepper"><button type="button" data-action="mode-level-down" ${disabled}>${icon("minus", "降低档位")}</button><b>${section.level}<small>/12</small></b><button type="button" data-action="mode-level-up" ${disabled}>${icon("plus", "提高档位")}</button></div></section>
+    <section class="mode-editor-card"><div class="mode-field-label"><strong>Frequency</strong><span>${section.frequency}</span></div><div class="mode-segmented-control">${frequencies}</div></section>
+    <section class="mode-editor-card"><div class="mode-field-label"><strong>Light</strong><span>${escapeHtml(section.light)}</span><button type="button" class="mode-toggle ${state.modeLightOn ? "on" : ""}" data-action="mode-toggle-light" aria-pressed="${state.modeLightOn}" ${disabled}><i></i></button></div><div class="mode-segmented-control light-control">${lights}</div></section>
+    <button type="button" class="mode-trial ${state.modeTrialPlaying ? "playing" : ""}" data-action="mode-toggle-trial" aria-pressed="${state.modeTrialPlaying}" ${disabled}>${icon(state.modeTrialPlaying ? "pause" : "play", state.modeTrialPlaying ? "停止试听" : "试听")}<span>${state.modeTrialPlaying ? "Playing" : "Try it"}</span></button>
+  </div>`;
+}
+
+function modeEditorScreen() {
+  return `<section class="mode-screen mode-editor-screen">${modeHeader("Edit", { help: true })}${modeEditorBody()}<div class="mode-bottom-action"><button type="button" class="mode-primary" data-action="mode-editor-next">Next</button></div></section>`;
+}
+
+function modeIntroductionScreen() {
+  const descriptions = [
+    ["Massage", "Gentle short cycles help initiate milk release before expression."],
+    ["Breast pumping", "Longer, deeper cycles support efficient milk expression."],
+    ["Mixed 1", "Short stimulation and expression cycles alternate gently."],
+    ["Mixed 2", "A stronger alternating rhythm for an efficient session."],
+    ["Rest", "A quiet interval lets the breast relax between active sections."]
+  ];
+  return `<section class="mode-screen mode-introduction-screen"><div class="mode-editor-background">${modeHeader("Edit")}${modeEditorBody(false)}</div><div class="mode-intro-shade"></div><div class="mode-intro-dialog" role="dialog" aria-modal="true" aria-label="Mode introduction"><header><strong>Mode introduction</strong><button type="button" data-action="mode-close-introduction" aria-label="关闭模式介绍">${icon("x", "关闭")}</button></header><div>${descriptions.map(([title, copy], index) => `<article><i>${String(index + 1).padStart(2, "0")}</i><span><strong>${title}</strong><p>${copy}</p></span></article>`).join("")}</div></div></section>`;
+}
+
+function customModeScreenMarkup(screen) {
+  const content = screen.id === "mode-list" ? modeListScreen()
+    : screen.id === "mode-name" ? modeNameScreen()
+      : screen.id === "mode-overview" ? modeOverviewScreen(false)
+        : screen.id === "mode-editor" ? modeEditorScreen()
+          : screen.id === "mode-overview-complete" ? modeOverviewScreen(true)
+            : modeIntroductionScreen();
+  previousCheckScreenId = null;
+  return `<div class="screen-frame mode-screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}"><div class="screen-scroll"><div class="screen-canvas mode-screen-canvas">${content}</div></div></div>`;
+}
+
 function screenMarkup(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
   const screen = screens[step];
+  if (kind === "home" && screen.custom) return customModeScreenMarkup(screen);
   const pageHotspots = kind === "hospital" ? hospitalHotspots(screen) : homeHotspots(screen);
   const hotspots = `${screenBackHotspot(kind, screen)}${pageHotspots}`;
   const digit = screen.id === "code" && state.codeDigit
@@ -391,6 +536,9 @@ function screenMarkup(kind) {
     : "";
   const pumpControlButtonMask = screen.image === "home-03-control.png"
     ? `<span class="pump-control-native-button-mask" aria-hidden="true"></span>`
+    : "";
+  const customControlMode = kind === "home" && screen.id === "control" && state.customModeSaved
+    ? `<div class="custom-control-mode-card"><div><strong>${escapeHtml(state.customModeName || "Milk Collection Mode-01")}</strong><span>Switch ${icon("chevron-right", "切换模式")}</span></div><p>Alternating massage and pumping, tuned to your saved settings.</p><div><i style="--segment:38%"></i><i style="--segment:62%"></i></div></div>`
     : "";
   const pumpingLevel = ["pump-running", "pumping"].includes(screen.id)
     ? `<span class="pumping-level-summary" aria-hidden="true">${state.comfortLevel}</span>
@@ -419,6 +567,7 @@ function screenMarkup(kind) {
         ${deviceOverlay}
         ${pumpControlDevice}
         ${pumpControlButtonMask}
+        ${customControlMode}
         ${pumpingLevel}
         <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
       </div>
@@ -462,7 +611,8 @@ function prototypeNavigation(kind) {
     : [
         { label: "连接设备", icon: "link-2", start: 0, end: 4 },
         { label: "使用教学", icon: "book-open", start: 5, end: 7 },
-        { label: "吸乳与记录", icon: "activity", start: 8, end: homeScreens.length - 1 }
+        { label: "模式设置", icon: "sliders-horizontal", start: homeScreens.findIndex(screen => screen.id === "control"), end: homeScreens.findIndex(screen => screen.id === "mode-introduction") },
+        { label: "吸乳与记录", icon: "activity", start: homeScreens.findIndex(screen => screen.id === "check-wear"), end: homeScreens.length - 1 }
       ];
   const items = groups.map(group => {
     const children = screens.slice(group.start, group.end + 1).map((screen, offset) => {
@@ -507,7 +657,13 @@ function render() {
   app.innerHTML = prototypePage(ENTRY);
   if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
   requestAnimationFrame(() => {
-    app.querySelector(".navigation-item.active")?.scrollIntoView({ block: "nearest" });
+    const navigation = app.querySelector(".navigation-scroll");
+    const activeItem = app.querySelector(".navigation-item.active");
+    if (!navigation || !activeItem) return;
+    const navigationRect = navigation.getBoundingClientRect();
+    const activeRect = activeItem.getBoundingClientRect();
+    if (activeRect.top < navigationRect.top) navigation.scrollTop -= navigationRect.top - activeRect.top;
+    if (activeRect.bottom > navigationRect.bottom) navigation.scrollTop += activeRect.bottom - navigationRect.bottom;
   });
   if (!directNavigation && state.autoAdvanceSuppressed !== "hospital:binding" && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
     transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功"), 1500);
@@ -574,6 +730,12 @@ function goToPreviousScreen(kind) {
   suppressStepHistory = false;
 }
 
+function updateModeSection(patch) {
+  const index = Math.max(0, Math.min(1, state.modeEditingSection - 1));
+  const sections = state.customModeSections.map((section, sectionIndex) => sectionIndex === index ? { ...section, ...patch } : section);
+  setState({ customModeSections: sections });
+}
+
 function handleAction(action, target) {
   if (!["navigation-open", "navigation-close", "navigation-step", "screen-back"].includes(action)) {
     directNavigation = false;
@@ -620,6 +782,54 @@ function handleAction(action, target) {
     case "home-next": setState({ homeStep: Math.min(homeScreens.length - 1, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
+    case "home-mode-list": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-list") }); break;
+    case "mode-start-create": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-name"), customModeSaved: false }); break;
+    case "mode-save-name": setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === "mode-overview"),
+      customModeName: state.customModeName.trim() || "Milk Collection Mode-01",
+      modeEditingSection: 1
+    }, "新模式已创建"); break;
+    case "mode-use-preset": setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === "control"),
+      customModeName: target.dataset.modeName || "Stimulation",
+      customModeSaved: true
+    }, "模式已应用"); break;
+    case "mode-edit-section": setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === "mode-editor"),
+      modeEditingSection: Number(target.dataset.section) === 2 ? 2 : 1,
+      modeTrialPlaying: false
+    }); break;
+    case "mode-add-section": setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === "mode-editor"),
+      modeEditingSection: 2,
+      modeTrialPlaying: false
+    }); break;
+    case "mode-select-type": updateModeSection({ type: target.dataset.value || "Massage" }); break;
+    case "mode-level-down": {
+      const section = state.customModeSections[state.modeEditingSection - 1];
+      updateModeSection({ level: Math.max(1, section.level - 1) });
+      break;
+    }
+    case "mode-level-up": {
+      const section = state.customModeSections[state.modeEditingSection - 1];
+      updateModeSection({ level: Math.min(12, section.level + 1) });
+      break;
+    }
+    case "mode-select-frequency": updateModeSection({ frequency: Math.max(1, Math.min(5, Number(target.dataset.value) || 1)) }); break;
+    case "mode-select-light": updateModeSection({ light: target.dataset.value || "Clear" }); break;
+    case "mode-toggle-light": setState({ modeLightOn: !state.modeLightOn }); break;
+    case "mode-toggle-trial": setState({ modeTrialPlaying: !state.modeTrialPlaying }, state.modeTrialPlaying ? "试听已停止" : "正在试听当前参数"); break;
+    case "mode-editor-next": setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === (state.modeEditingSection === 2 ? "mode-overview-complete" : "mode-overview")),
+      modeTrialPlaying: false
+    }); break;
+    case "mode-open-introduction": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-introduction") }); break;
+    case "mode-close-introduction": goToPreviousScreen("home"); break;
+    case "mode-save-to-control": setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === "control"),
+      customModeSaved: true,
+      modeTrialPlaying: false
+    }, "自定义模式已保存并应用"); break;
     case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-wear"), pumpRunning: false, pumpPaused: false }); break;
     case "calibration-start-check": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
@@ -691,6 +901,12 @@ document.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target || target.disabled) return;
   handleAction(target.dataset.action, target);
+});
+
+document.addEventListener("input", (event) => {
+  if (!event.target.matches("[data-mode-name-input]")) return;
+  state = { ...state, customModeName: event.target.value };
+  saveState();
 });
 
 document.addEventListener("pointerdown", (event) => {
