@@ -1,5 +1,5 @@
-const ENTRY = document.body.dataset.entry || "launcher";
-const VERSION = "0.3.16";
+const ENTRY = document.body.dataset.entry || "hospital";
+const VERSION = "0.3.17";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -474,21 +474,11 @@ function prototypePage(kind) {
   </main>`;
 }
 
-function launcher() {
-  return `<main class="launcher">
-    <header class="launcher-header"><div><span>Figma 755:11403</span><h1>吸乳器双场景独立 Demo</h1></div><div class="launcher-actions"><span class="version">v${VERSION}</span></div></header>
-    <section class="demo-grid">
-      <article class="demo-column"><div class="demo-heading"><div><strong>院端 Demo</strong><span>绑定并完成 V4 设备教学</span></div><a href="./hospital.html" target="_blank">独立打开</a></div><iframe src="./hospital.html" title="院端 Demo"></iframe></article>
-      <article class="demo-column"><div class="demo-heading"><div><strong>居家 Demo</strong><span>连接、教学、吸乳、记录与数据</span></div><a href="./home.html" target="_blank">独立打开</a></div><iframe src="./home.html" title="居家 Demo"></iframe></article>
-    </section>
-  </main>`;
-}
-
 function render() {
   clearTimeout(transitionTimer);
   cancelHold();
   const app = document.getElementById("app");
-  app.innerHTML = ENTRY === "launcher" ? launcher() : prototypePage(ENTRY);
+  app.innerHTML = prototypePage(ENTRY);
   if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
   requestAnimationFrame(() => {
     app.querySelector(".navigation-item.active")?.scrollIntoView({ block: "nearest" });

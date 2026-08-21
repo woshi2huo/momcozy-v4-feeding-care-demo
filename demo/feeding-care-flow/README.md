@@ -11,9 +11,10 @@ cd /Users/user/Documents/IoT项目
 python3 -m http.server 4173
 ```
 
-- 双 Demo 入口：`http://localhost:4173/demo/feeding-care-flow/`
 - 院端 Demo：`http://localhost:4173/demo/feeding-care-flow/hospital.html`
 - 居家 Demo：`http://localhost:4173/demo/feeding-care-flow/home.html`
+
+根目录地址会直接跳转到院端 Demo，不再并排加载两个 Demo。
 
 ## 演示流程
 
@@ -53,7 +54,7 @@ git restore --source feeding-care-demo-v0.2.0 -- demo/feeding-care-flow
 
 ## 文件
 
-- `index.html`：两个独立 Demo 的统一入口
+- `index.html`：跳转至院端独立 Demo 的兼容入口
 - `hospital.html`：院端独立入口
 - `home.html`：居家端独立入口
 - `app.js`：独立页面状态与交互热区
