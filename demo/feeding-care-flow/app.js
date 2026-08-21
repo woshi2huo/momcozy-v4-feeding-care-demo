@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.3.20";
+const VERSION = "0.3.21";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const calibrationScreens = [
@@ -43,6 +43,7 @@ const homeScreens = [
   { id: "ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备助手完成页" },
   { id: "control", image: "home-03-control.png", width: 375, height: 956, label: "吸乳控制初始状态" },
   { id: "mode-list", custom: true, width: 402, height: 874, label: "模式列表" },
+  { id: "mode-rhythm", custom: true, width: 402, height: 874, label: "韵律选择弹窗" },
   { id: "mode-name", custom: true, width: 402, height: 874, label: "新模式命名" },
   { id: "mode-overview", custom: true, width: 402, height: 874, label: "分段模式总览" },
   { id: "mode-editor", custom: true, width: 402, height: 874, label: "分段参数编辑" },
@@ -69,6 +70,8 @@ const defaults = {
   comfortLevel: 4,
   customModeName: "Milk Collection Mode-01",
   customModeSaved: false,
+  selectedManualMode: "Stimulation",
+  selectedManualRhythm: "Gentle",
   modeEditingSection: 1,
   modeTrialPlaying: false,
   modeLightOn: true,
@@ -412,31 +415,72 @@ function modeHeader(title, options = {}) {
   return `${modeStatusBar()}<header class="mode-header"><button type="button" class="mode-back" data-action="${backAction}" ${backKind} aria-label="返回上一个页面">${icon("chevron-left", "返回")}</button><h1>${title}</h1>${close}</header>`;
 }
 
-function modeListContent(interactive = true) {
+function modeProgramBar() {
+  const segments = ["stimulate", "stimulate", "rest", "mixing", "stimulate", "stimulate", "mixing", "stimulate", "stimulate", "rest", "mixing", "stimulate"];
+  return `<div class="mode-program-bar" aria-label="Stimulation, rest and mixing rhythm">${segments.map(type => `<i class="${type}"></i>`).join("")}</div>`;
+}
+
+function modeProgramCard(name, interactive) {
   const action = interactive ? 'data-action="mode-use-preset"' : "";
+  return `<button type="button" class="mode-program-card" ${action} data-mode-name="${name}">
+    <div class="mode-program-heading"><span><strong>${name}</strong><small>45:00</small></span><b>Details ${icon("chevron-right", "查看详情")}</b></div>
+    <p>Gentle and convenient, designed for safely expressing milk on the go.</p>
+    ${modeProgramBar()}
+    <div class="mode-program-legend"><span class="stimulate">Stimulate</span><span class="rest">Rest</span><span class="mixing">Mixing</span></div>
+  </button>`;
+}
+
+function modeListContent(interactive = true) {
+  const manualAction = interactive ? 'data-action="mode-open-rhythm"' : "";
   const createAction = interactive ? 'data-action="mode-start-create"' : "";
+  const manualModes = [
+    ["Stimulation", "Gentle and comfortable", "heart", "activity"],
+    ["Expression", "Fast-paced and intense", "droplet", ""],
+    ["Mixed", "Fast-paced and intense", "droplet", ""]
+  ];
   return `<div class="mode-list-content">
-    <p class="mode-list-kicker">Preset mode</p>
+    <p class="mode-list-kicker">Manual</p>
     <div class="mode-list-stack">
-      <button type="button" class="mode-list-card selected" ${action} data-mode-name="Stimulation"><span><strong>Stimulation</strong><small>Quickly initiate milk release.</small></span>${icon("sparkles", "刺激模式")}</button>
-      <button type="button" class="mode-list-card" ${action} data-mode-name="Expression"><span><strong>Expression</strong><small>For regular milk expression.</small></span>${icon("droplets", "吸乳模式")}</button>
-      <button type="button" class="mode-list-card" ${action} data-mode-name="Mixed"><span><strong>Mixed</strong><small>Stimulation and pumping alternate.</small></span>${icon("blend", "混合模式")}</button>
+      ${manualModes.map(([name, description, leadingIcon, trailingIcon]) => `<button type="button" class="mode-list-card ${state.selectedManualMode === name ? "selected" : ""}" ${manualAction} data-mode-name="${name}"><span class="mode-card-icon ${name === "Stimulation" ? "heart" : "drop"}">${icon(leadingIcon, `${name} 图标`)}</span><span class="mode-card-copy"><strong>${name}</strong><small>${description}</small></span>${trailingIcon ? `<span class="mode-card-wave">${icon(trailingIcon, "当前韵律")}</span>` : ""}</button>`).join("")}
     </div>
-    <div class="mode-list-section-title"><p>Personalized</p><button type="button" ${createAction}>${icon("plus", "新建模式")}<span>Create</span></button></div>
-    <div class="mode-list-stack custom-list">
-      <button type="button" class="mode-custom-card" ${action} data-mode-name="Milk Boost Mode #1"><span><strong>Milk Boost Mode #1</strong><small>15 min · Massage / Mixed</small></span><b>Details</b></button>
-      <button type="button" class="mode-custom-card" ${action} data-mode-name="Milk Boost Mode #2"><span><strong>Milk Boost Mode #2</strong><small>20 min · Massage / Expression</small></span><b>Details</b></button>
+    <div class="mode-list-section-title"><p>Programs</p><button type="button" ${createAction}>${icon("plus", "新建模式")}<span>Create</span></button></div>
+    <div class="mode-list-stack mode-program-list">
+      ${modeProgramCard("Milk Boost Mode P1", interactive)}
+      ${modeProgramCard("Milk Boost Mode P2", interactive)}
     </div>
   </div>`;
 }
 
 function modeListScreen() {
-  return `<section class="mode-screen mode-list-screen">${modeHeader("List")}${modeListContent()}</section>`;
+  return `<section class="mode-screen mode-list-screen">${modeStatusBar()}<div class="mode-list-sheet"><header class="mode-list-header"><button type="button" data-action="screen-back" data-kind="home" aria-label="关闭模式列表">${icon("x", "关闭模式列表")}</button><h1>List</h1></header>${modeListContent()}</div></section>`;
+}
+
+function modeRhythmOptions() {
+  const options = [
+    ["Gentle", "Soft, even pulses for a comfortable start", [3, 6, 10, 7, 4, 8, 12, 7, 3]],
+    ["Balanced", "Natural alternating pulses for daily pumping", [5, 9, 6, 11, 7, 4, 10, 6, 8]],
+    ["Intense", "Fast, concentrated pulses for efficient expression", [8, 12, 7, 13, 9, 12, 6, 11, 8]]
+  ];
+  return options.map(([name, description, bars]) => `<button type="button" class="mode-rhythm-option ${state.selectedManualRhythm === name ? "selected" : ""}" data-action="mode-select-rhythm" data-value="${name}"><span class="mode-rhythm-radio"></span><span class="mode-rhythm-copy"><strong>${name}</strong><small>${description}</small></span><span class="mode-rhythm-wave" aria-hidden="true">${bars.map(height => `<i style="--bar-height:${height}px"></i>`).join("")}</span></button>`).join("");
+}
+
+function modeRhythmScreen() {
+  return `<section class="mode-screen mode-rhythm-screen">
+    <div class="mode-list-background">${modeListScreen()}</div>
+    <div class="mode-rhythm-shade" aria-hidden="true"></div>
+    <section class="mode-rhythm-sheet" role="dialog" aria-modal="true" aria-label="Rhythm">
+      <header><button type="button" data-action="mode-rhythm-close" aria-label="关闭韵律弹窗">${icon("x", "关闭韵律弹窗")}</button><h1>Rhythm</h1><span></span></header>
+      <div class="mode-rhythm-summary"><span>${icon(state.selectedManualMode === "Stimulation" ? "heart" : "droplet", `${state.selectedManualMode} 图标`)}</span><div><small>Manual mode</small><strong>${escapeHtml(state.selectedManualMode)}</strong></div></div>
+      <p class="mode-rhythm-label">Select a rhythm</p>
+      <div class="mode-rhythm-options">${modeRhythmOptions()}</div>
+      <button type="button" class="mode-rhythm-apply" data-action="mode-apply-rhythm">Use this rhythm</button>
+    </section>
+  </section>`;
 }
 
 function modeNameScreen() {
   return `<section class="mode-screen mode-name-screen">
-    <div class="mode-list-background">${modeHeader("List")}${modeListContent(false)}</div>
+    <div class="mode-list-background">${modeListScreen()}</div>
     <div class="mode-name-shade" aria-hidden="true"></div>
     <div class="mode-name-sheet" role="dialog" aria-modal="true" aria-label="New Mode">
       <div class="mode-name-title"><button type="button" data-action="screen-back" data-kind="home">Cancel</button><strong>New Mode</strong><span></span></div>
@@ -506,7 +550,8 @@ function modeIntroductionScreen() {
 
 function customModeScreenMarkup(screen) {
   const content = screen.id === "mode-list" ? modeListScreen()
-    : screen.id === "mode-name" ? modeNameScreen()
+    : screen.id === "mode-rhythm" ? modeRhythmScreen()
+      : screen.id === "mode-name" ? modeNameScreen()
       : screen.id === "mode-overview" ? modeOverviewScreen(false)
         : screen.id === "mode-editor" ? modeEditorScreen()
           : screen.id === "mode-overview-complete" ? modeOverviewScreen(true)
@@ -783,6 +828,18 @@ function handleAction(action, target) {
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
     case "home-mode-list": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-list") }); break;
+    case "mode-open-rhythm": setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === "mode-rhythm"),
+      selectedManualMode: target.dataset.modeName || "Stimulation",
+      selectedManualRhythm: target.dataset.modeName === "Stimulation" ? "Gentle" : "Intense"
+    }); break;
+    case "mode-rhythm-close": goToPreviousScreen("home"); break;
+    case "mode-select-rhythm": setState({ selectedManualRhythm: target.dataset.value || "Gentle" }); break;
+    case "mode-apply-rhythm": setState({
+      homeStep: homeScreens.findIndex(screen => screen.id === "control"),
+      customModeName: state.selectedManualMode,
+      customModeSaved: true
+    }, `${state.selectedManualMode} · ${state.selectedManualRhythm} 已应用`); break;
     case "mode-start-create": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-name"), customModeSaved: false }); break;
     case "mode-save-name": setState({
       homeStep: homeScreens.findIndex(screen => screen.id === "mode-overview"),
