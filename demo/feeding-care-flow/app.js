@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.3.17";
+const VERSION = "0.3.18";
 const STORAGE_KEY = ENTRY === "home"
   ? `momcozy-figma-755-demo-v${VERSION}-home`
   : `momcozy-figma-755-demo-v3-${ENTRY}`;
@@ -172,7 +172,11 @@ function hospitalHotspots(screen) {
     case "training-ready":
       return hotspot("hospital-open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
     case "pump-control": return "";
-    case "pump-running": return "";
+    case "pump-running":
+      return [
+        hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
+        hotspot("pump-level-up", "提高吸乳档位", 71.5, 54.3, 20.0, 4.9)
+      ].join("");
     case "pump-finished":
       return [
         hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
@@ -207,7 +211,11 @@ function homeHotspots(screen) {
     case "ready": return hotspot("home-next", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
     case "control":
       return hotspot("home-device", "返回设备页", 3.5, 4.3, 9.0, 4.8);
-    case "pumping": return "";
+    case "pumping":
+      return [
+        hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
+        hotspot("pump-level-up", "提高吸乳档位", 71.5, 54.3, 20.0, 4.9)
+      ].join("");
     case "finished": return hotspot("save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2);
     case "logged": return hotspot("show-dashboard", "查看吸乳数据", 0, 0, 100, 100);
     case "dashboard":
@@ -371,6 +379,10 @@ function screenMarkup(kind) {
   const pumpControlButtonMask = screen.image === "home-03-control.png"
     ? `<span class="pump-control-native-button-mask" aria-hidden="true"></span>`
     : "";
+  const pumpingLevel = ["pump-running", "pumping"].includes(screen.id)
+    ? `<span class="pumping-level-summary" aria-hidden="true">${state.comfortLevel}</span>
+      <span class="pumping-level-value" aria-live="polite"><strong>${state.comfortLevel}</strong><small>/ 12</small></span>`
+    : "";
   const finishAction = screen.id === "pump-running" ? "hospital-finish-pump" : screen.id === "pumping" ? "finish-pump" : "";
   const holdControl = finishAction
     ? `<div class="pumping-actions">
@@ -394,6 +406,7 @@ function screenMarkup(kind) {
         ${deviceOverlay}
         ${pumpControlDevice}
         ${pumpControlButtonMask}
+        ${pumpingLevel}
         <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
       </div>
     </div>
@@ -598,6 +611,8 @@ function handleAction(action, target) {
     }
     case "comfort-down": setState({ comfortLevel: Math.max(1, state.comfortLevel - 1) }); break;
     case "comfort-up": setState({ comfortLevel: Math.min(12, state.comfortLevel + 1) }); break;
+    case "pump-level-down": setState({ comfortLevel: Math.max(1, state.comfortLevel - 1) }); break;
+    case "pump-level-up": setState({ comfortLevel: Math.min(12, state.comfortLevel + 1) }); break;
     case "calibration-start-pump": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
