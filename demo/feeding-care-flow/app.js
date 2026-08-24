@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.1";
+const VERSION = "0.4.2";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const calibrationScreens = [
@@ -82,10 +82,13 @@ const defaults = {
   controlLightOn: true,
   controlSoundOn: true,
   controlAutoLockOn: true,
+  flashlightOn: false,
+  guideVideoPlaying: false,
   comfortLevel: 4,
   bestLevelSet: false,
   controlMode: "Stimulation",
   customModeName: "Milk Collection Mode-01",
+  customModeDescription: "Boost milk supply with a gentle segmented rhythm.",
   customModeSaved: false,
   selectedManualMode: "Stimulation",
   selectedManualRhythm: "Gentle",
@@ -98,6 +101,9 @@ const defaults = {
   ],
   leftVolume: 0,
   rightVolume: 0,
+  sessionDuration: "20 min 30 sec",
+  communityJoined: false,
+  communityStatus: "",
   activeInsight: "Daily rhythm",
   autoAdvanceSuppressed: ""
 };
@@ -109,6 +115,8 @@ let holdTarget = null;
 let navigationOpen = false;
 let directNavigation = false;
 let controlOverlay = "";
+let guideFullscreen = false;
+let durationPickerOpen = false;
 let previousCheckScreenId = null;
 let suppressStepHistory = false;
 const stepHistory = { hospital: [], home: [] };
@@ -189,11 +197,61 @@ function hotspot(action, label, x, y, width, height, extra = "") {
   return `<button class="hotspot" data-action="${action}" aria-label="${label}" title="${label}" style="--x:${x};--y:${y};--w:${width};--h:${height}" ${extra}></button>`;
 }
 
-function controlHotspots(kind) {
+function appTabHotspots(kind) {
+  return [
+    hotspot("app-tab-home", "打开 Home", 7.0, 90.4, 16.0, 8.2, `data-kind="${kind}"`),
+    hotspot("app-tab-device", "打开 Device", 30.3, 90.4, 17.0, 8.2, `data-kind="${kind}"`),
+    hotspot("app-tab-community", "打开 Community", 53.2, 90.4, 17.0, 8.2, `data-kind="${kind}"`),
+    hotspot("app-tab-profile", "打开 Me", 76.5, 90.4, 16.0, 8.2, `data-kind="${kind}"`)
+  ].join("");
+}
+
+function contentCardHotspots() {
+  return [
+    hotspot("content-card-open", "查看 Digital Bottle Warmer T31", 0, 49.0, 24.0, 28.0, 'data-card="Digital Bottle Warmer T31"'),
+    hotspot("content-card-open", "查看 Smart Baby Monitor BM08", 28.0, 49.0, 43.0, 28.0, 'data-card="Smart Baby Monitor BM08"'),
+    hotspot("content-card-open", "查看 W1 Comfort Pump", 78.0, 49.0, 22.0, 28.0, 'data-card="W1 Comfort Pump"')
+  ].join("");
+}
+
+function trainingGuideHotspots(kind, final = false) {
+  const prefix = kind === "hospital" ? "hospital" : "home";
+  return [
+    hotspot(`${prefix}-training-exit`, "关闭设备教学", 3.8, 6.6, 12.5, 6.3),
+    hotspot("guide-toggle-video", state.guideVideoPlaying ? "暂停教学视频" : "播放教学视频", 42.0, 37.0, 16.0, 9.0),
+    hotspot("guide-open-fullscreen", "全屏查看教学视频", 86.0, 26.0, 11.0, 7.0),
+    hotspot("guide-show-how", "展开 How to do it", 4.0, 65.0, 92.0, 7.0),
+    hotspot("guide-show-warning", "展开 What to watch out for", 4.0, 72.0, 92.0, 7.0),
+    final ? "" : hotspot(`${prefix}-prev`, "上一步", 4.2, 89.5, 30.2, 6.7),
+    hotspot(`${prefix}-next`, final ? "完成设备设置" : "下一步", final ? 4.1 : 37.6, 89.5, final ? 91.8 : 58.4, 6.8)
+  ].join("");
+}
+
+function readyHotspots(kind) {
+  const startAction = kind === "hospital" ? "hospital-open-control" : "home-next";
+  return [
+    hotspot(startAction, "开始使用 V4", 6.0, 49.5, 88.0, 6.0),
+    hotspot("ready-open-assistant", "打开 Cozy Assistant", 8.0, 72.7, 84.0, 7.0, `data-kind="${kind}"`),
+    hotspot("ready-open-clean-guide", "打开 Clean & Assemble", 8.0, 80.3, 84.0, 7.0, `data-kind="${kind}"`),
+    hotspot("ready-contact-support", "联系 Momcozy 支持", 8.0, 88.0, 84.0, 6.5)
+  ].join("");
+}
+
+function codeKeypadHotspots() {
+  const keys = [
+    ["1", 4.3, 65.0], ["2", 35.3, 65.0], ["3", 66.3, 65.0],
+    ["4", 4.3, 71.5], ["5", 35.3, 71.5], ["6", 66.3, 71.5],
+    ["7", 4.3, 78.0], ["8", 35.3, 78.0], ["9", 66.3, 78.0],
+    ["0", 35.3, 84.6]
+  ];
+  return `${keys.map(([value, x, y]) => hotspot("enter-code", `输入数字 ${value}`, x, y, 29.2, 5.9, `data-value="${value}"`)).join("")}${hotspot("delete-code", "删除验证码", 69.5, 84.6, 22.0, 5.9)}`;
+}
+
+function controlHotspots(kind, modeAction = kind === "home" ? "home-mode-list" : "control-open-mode") {
   return [
     hotspot("control-open-help", "打开吸乳帮助", 73.0, 4.3, 11.0, 5.7),
     hotspot("control-open-settings", "打开吸乳器设置", 85.0, 4.3, 11.0, 5.7),
-    hotspot(kind === "home" ? "home-mode-list" : "control-open-mode", "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2),
+    hotspot(modeAction, "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2),
     hotspot("control-level-down", "降低预设档位", 8.5, 54.3, 20.0, 4.9),
     hotspot("control-level-up", "提高预设档位", 71.5, 54.3, 20.0, 4.9)
   ].join("");
@@ -214,17 +272,29 @@ function screenBackHotspot(kind, screen) {
 
 function hospitalHotspots(screen) {
   switch (screen.id) {
-    case "empty": return hotspot("hospital-next", "添加设备", 30.5, 33.0, 38.8, 6.4);
-    case "manual": return hotspot("hospital-next", "选择 V4 吸乳器", 4.2, 27.9, 28.6, 13.7);
+    case "empty": return `${hotspot("hospital-next", "添加设备", 30.5, 33.0, 38.8, 6.4)}${contentCardHotspots()}${appTabHotspots("hospital")}`;
+    case "manual": return [
+      hotspot("hospital-next", "选择 V4 吸乳器", 4.2, 27.9, 28.6, 13.7),
+      hotspot("hospital-open-scan", "扫描设备二维码", 87.0, 4.6, 10.0, 7.0),
+      hotspot("hospital-refresh-nearby", "刷新附近设备", 82.0, 13.2, 14.0, 8.0),
+      hotspot("unsupported-device", "查看 M5", 35.5, 27.9, 28.6, 13.7, 'data-device="M5"'),
+      hotspot("unsupported-device", "查看 M6", 67.0, 27.9, 28.6, 13.7, 'data-device="M6"'),
+      hotspot("unsupported-device", "查看 M6", 4.2, 42.7, 28.6, 13.7, 'data-device="M6"'),
+      hotspot("unsupported-device", "查看 M9 Pro", 35.5, 42.7, 28.6, 13.7, 'data-device="M9 Pro"'),
+      hotspot("unsupported-device", "查看 MeggO", 4.2, 62.3, 28.6, 13.7, 'data-device="MeggO"')
+    ].join("");
     case "found": return hotspot("hospital-next", "扫描添加设备", 6.4, 86.9, 87.2, 6.1);
-    case "scan": return hotspot("hospital-next", "使用其他连接方式", 7.5, 86.9, 85.0, 6.2);
+    case "scan": return `${hotspot("toggle-flashlight", state.flashlightOn ? "关闭闪光灯" : "打开闪光灯", 41.5, 51.2, 17.0, 8.2)}${hotspot("hospital-next", "使用其他连接方式", 7.5, 86.9, 85.0, 6.2)}`;
     case "code":
       return [
-        hotspot("enter-code", "输入验证码最后一位", 4.3, 65.0, 91.0, 25.5),
+        codeKeypadHotspots(),
+        hotspot("resend-code", "重新发送验证码", 7.0, 36.0, 45.0, 5.0),
         hotspot("submit-code", "下一步", 8.4, 55.0, 83.2, 5.9, state.codeDigit ? "" : "disabled")
       ].join("");
     case "success":
       return [
+        hotspot("hospital-refresh-bound", "刷新绑定设备", 82.0, 12.5, 14.0, 7.0),
+        hotspot("hospital-open-control", "打开已绑定的 V4", 4.0, 18.5, 92.0, 12.0),
         hotspot("hospital-learn", "学习使用设备", 6.4, 83.2, 87.2, 6.2),
         hotspot("complete-hospital", "完成绑定", 34.0, 90.3, 32.0, 4.0)
       ].join("");
@@ -233,31 +303,20 @@ function hospitalHotspots(screen) {
         hotspot("hospital-training-ready", "跳过设备教学", 76.8, 7.2, 17.3, 5.5),
         hotspot("hospital-next", "开始设备教学", 6.0, 87.5, 88.0, 6.0)
       ].join("");
-    case "training-guide":
-      return [
-        hotspot("hospital-training-exit", "关闭设备教学", 4.0, 7.2, 12.0, 5.8),
-        hotspot("hospital-prev", "上一步", 4.2, 89.5, 30.2, 6.7),
-        hotspot("hospital-next", "下一步", 37.6, 89.5, 58.4, 6.7)
-      ].join("");
-    case "training-guide-final":
-      return [
-        hotspot("hospital-training-exit", "关闭设备教学", 4.0, 7.2, 12.0, 5.8),
-        hotspot("hospital-next", "完成设备设置", 4.1, 89.5, 91.8, 6.8)
-      ].join("");
-    case "training-ready":
-      return hotspot("hospital-open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
+    case "training-guide": return trainingGuideHotspots("hospital");
+    case "training-guide-final": return trainingGuideHotspots("hospital", true);
+    case "training-ready": return readyHotspots("hospital");
     case "pump-control": return controlHotspots("hospital");
     case "pump-running":
-      return [
-        hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
-        hotspot("pump-level-up", "提高吸乳档位", 71.5, 54.3, 20.0, 4.9)
-      ].join("");
+      return controlHotspots("hospital", "control-open-mode");
     case "pump-finished":
       return [
         hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
         hotspot("hospital-left-down", "减少左侧奶量", 18.5, 65.9, 12.0, 2.9),
         hotspot("hospital-right-up", "增加右侧奶量", 69.5, 63.0, 12.0, 2.9),
         hotspot("hospital-right-down", "减少右侧奶量", 69.5, 65.9, 12.0, 2.9),
+        hotspot("edit-session-time", "修改吸乳日期和时间", 32.0, 43.5, 36.0, 5.5),
+        hotspot("open-duration-picker", "选择吸乳时长", 5.0, 79.5, 90.0, 7.5),
         hotspot("hospital-save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2)
       ].join("");
     case "pump-logged":
@@ -269,27 +328,32 @@ function hospitalHotspots(screen) {
 
 function homeHotspots(screen) {
   switch (screen.id) {
-    case "connect-empty": return hotspot("home-connection-found", "添加 V4 设备", 30.5, 33.0, 38.8, 6.4);
-    case "connect-device": return hotspot("home-connection-start-training", "开始设备教学", 36.0, 36.0, 28.0, 4.8);
+    case "connect-empty": return `${hotspot("home-connection-found", "添加 V4 设备", 30.5, 33.0, 38.8, 6.4)}${contentCardHotspots()}${appTabHotspots("home")}`;
+    case "connect-device": return [
+      hotspot("home-add-another-device", "添加其他设备", 83.0, 6.0, 14.0, 7.0),
+      hotspot("home-connection-start-training", "打开 V4 快速设置", 4.0, 14.0, 92.0, 33.0),
+      hotspot("home-connection-start-training", "开始设备教学", 36.0, 36.0, 28.0, 4.8),
+      appTabHotspots("home")
+    ].join("");
     case "welcome":
       return [
         hotspot("home-ready", "跳过设备教学", 76.8, 7.2, 17.3, 5.5),
         hotspot("home-next", "开始设备教学", 6.0, 87.5, 88.0, 6.0)
       ].join("");
-    case "guide":
-      return [
-        hotspot("home-prev", "关闭教学", 4.0, 7.2, 12.0, 5.8),
-        hotspot("home-prev", "上一步", 4.2, 89.5, 30.2, 6.7),
-        hotspot("home-next", "下一步", 37.6, 89.5, 58.4, 6.7)
-      ].join("");
-    case "ready": return hotspot("home-next", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
+    case "guide": return trainingGuideHotspots("home");
+    case "ready": return readyHotspots("home");
     case "control": return controlHotspots("home");
     case "pumping":
-      return [
-        hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
-        hotspot("pump-level-up", "提高吸乳档位", 71.5, 54.3, 20.0, 4.9)
-      ].join("");
-    case "finished": return hotspot("save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2);
+      return controlHotspots("home", "control-open-mode");
+    case "finished": return [
+      hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
+      hotspot("hospital-left-down", "减少左侧奶量", 18.5, 65.9, 12.0, 2.9),
+      hotspot("hospital-right-up", "增加右侧奶量", 69.5, 63.0, 12.0, 2.9),
+      hotspot("hospital-right-down", "减少右侧奶量", 69.5, 65.9, 12.0, 2.9),
+      hotspot("edit-session-time", "修改吸乳日期和时间", 32.0, 43.5, 36.0, 5.5),
+      hotspot("open-duration-picker", "选择吸乳时长", 5.0, 79.5, 90.0, 7.5),
+      hotspot("save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2)
+    ].join("");
     case "logged": return hotspot("show-dashboard", "查看吸乳数据", 0, 0, 100, 100);
     case "dashboard": return hotspot("home-control", "开始 Milk Boost", 72.0, 90.2, 22.0, 6.7);
     case "device": return hotspot("home-control", "打开吸乳器控制", 4.0, 14.3, 92.0, 32.8);
@@ -317,6 +381,32 @@ function connectionMarkup(screen) {
       </section>`;
   }
   return "";
+}
+
+function guideExperienceMarkup(screen) {
+  if (!["training-guide", "training-guide-final", "guide"].includes(screen.id)) return "";
+  const playback = state.guideVideoPlaying
+    ? `<span class="guide-playback-state playing">${icon("pause", "视频播放中")}<small>Playing</small></span>`
+    : "";
+  const fullscreen = guideFullscreen
+    ? `<button type="button" class="guide-fullscreen-shade" data-action="guide-close-fullscreen" aria-label="关闭全屏视频"></button>
+      <section class="guide-fullscreen-dialog" role="dialog" aria-modal="true" aria-label="How-to video">
+        <header><strong>How-to video</strong><button type="button" data-action="guide-close-fullscreen" aria-label="关闭全屏视频">${icon("x", "关闭")}</button></header>
+        <div class="guide-fullscreen-video"><span>${icon(state.guideVideoPlaying ? "pause" : "play", state.guideVideoPlaying ? "暂停" : "播放")}</span><strong>Disassemble to Clean</strong><small>15 sec · V4 setup guide</small></div>
+        <button type="button" class="guide-fullscreen-control" data-action="guide-toggle-video">${state.guideVideoPlaying ? "Pause video" : "Play video"}</button>
+      </section>`
+    : "";
+  return `${playback}${fullscreen}`;
+}
+
+function durationPickerMarkup(screen) {
+  if (!durationPickerOpen || !["pump-finished", "finished"].includes(screen.id)) return "";
+  const options = ["15 min", "20 min 30 sec", "25 min", "30 min"];
+  return `<button type="button" class="duration-picker-shade" data-action="close-duration-picker" aria-label="关闭时长选择"></button>
+    <section class="duration-picker" role="dialog" aria-modal="true" aria-label="Pumping duration">
+      <header><h2>Pumping duration</h2><button type="button" data-action="close-duration-picker" aria-label="关闭">${icon("x", "关闭")}</button></header>
+      <div>${options.map(value => `<button type="button" class="${state.sessionDuration === value ? "selected" : ""}" data-action="select-duration" data-value="${value}" aria-pressed="${state.sessionDuration === value}"><span>${value}</span>${state.sessionDuration === value ? icon("check", "已选择") : icon("chevron-right", "选择")}</button>`).join("")}</div>
+    </section>`;
 }
 
 function calibrationStepper(screenId) {
@@ -498,7 +588,7 @@ function modeNameScreen() {
     <div class="mode-name-sheet" role="dialog" aria-modal="true" aria-label="New Mode">
       <div class="mode-name-title"><button type="button" data-action="screen-back" data-kind="home">Cancel</button><strong>New Mode</strong><span></span></div>
       <label><span>Mode name</span><input type="text" data-mode-name-input maxlength="28" value="${escapeHtml(state.customModeName)}" placeholder="Please enter the mode name" /></label>
-      <label><span>Description</span><textarea data-mode-description-input maxlength="80" placeholder="Describe how you want to use this mode">Boost milk supply with a gentle segmented rhythm.</textarea></label>
+      <label><span>Description</span><textarea data-mode-description-input maxlength="80" placeholder="Describe how you want to use this mode">${escapeHtml(state.customModeDescription)}</textarea></label>
       <button type="button" class="mode-primary" data-action="mode-save-name">Save</button>
     </div>
   </section>`;
@@ -605,6 +695,7 @@ function deviceAiScreen(kind) {
         <span class="community-entry-copy"><small>Community group</small><strong>Pumping moms</strong><em><span class="member-dots">A M S</span>128 moms active today</em></span>
         <span class="community-entry-arrow">${icon("chevron-right", "进入群组")}</span>
       </button>
+      <div class="device-ai-hotspots">${hotspot("app-add-device", "添加设备", 83.0, 6.0, 14.0, 7.0, `data-kind="${kind}"`)}${appTabHotspots(kind)}</div>
     </div></div>
   </div>`;
 }
@@ -655,9 +746,9 @@ function communityScreen(kind) {
   const bubbles = [["pumping","19","large"],["tired","14","medium"],["hands full","4","small"],["need company","18","hero"],["can't sleep","11","medium"],["baby sleeping","6","medium"],["music on","8","large"],["cluster feeding","7","small"]];
   return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:1040"><div class="screen-scroll"><div class="screen-canvas community-canvas">
     ${appStatusBar()}${experienceHeader(kind, "")}
-    <section class="community-heading"><div><h1>Pumping moms</h1><p><span class="member-dots">A M S</span>128 moms active today</p></div><button type="button" data-action="community-join">Join</button><p>A soft place for pump timers, bottle warmers, and tiny wins while the house is asleep.</p></section>
-    <section class="community-status"><header><h2>Moms’ current status</h2><button type="button" data-action="community-share">Share yours</button></header><div class="status-bubbles">${bubbles.map(([label,count,size]) => `<button type="button" class="status-bubble ${size}" data-action="community-share"><strong>${label}</strong><small>${count}</small></button>`).join("")}</div><button type="button" class="community-share-bar" data-action="community-share">Want to say more about it?<span>Share</span></button></section>
-    <article class="community-post"><header><span class="post-avatar">J</span><div><strong>John Alexander Smith <small>· 15 m</small></strong><em>● Pumping</em></div></header><p>Second letdown is taking its sweet time. I put one tiny lamp on and I am pretending this corner is a little night café.</p><div class="post-visual"><span>Late-night pumping room</span><button type="button" data-action="community-join">Join & Post</button></div></article>
+    <section class="community-heading"><div><h1>Pumping moms</h1><p><span class="member-dots">A M S</span>128 moms active today</p></div><button type="button" class="${state.communityJoined ? "joined" : ""}" data-action="community-join" aria-pressed="${state.communityJoined}">${state.communityJoined ? "Joined" : "Join"}</button><p>A soft place for pump timers, bottle warmers, and tiny wins while the house is asleep.</p></section>
+    <section class="community-status"><header><h2>Moms’ current status</h2><button type="button" data-action="community-share">${state.communityStatus ? `Shared: ${escapeHtml(state.communityStatus)}` : "Share yours"}</button></header><div class="status-bubbles">${bubbles.map(([label,count,size]) => `<button type="button" class="status-bubble ${size} ${state.communityStatus === label ? "selected" : ""}" data-action="community-select-status" data-status="${label}" aria-pressed="${state.communityStatus === label}"><strong>${label}</strong><small>${count}</small></button>`).join("")}</div><button type="button" class="community-share-bar" data-action="community-share">${state.communityStatus ? `Your status: ${escapeHtml(state.communityStatus)}` : "Want to say more about it?"}<span>Share</span></button></section>
+    <article class="community-post"><header><span class="post-avatar">J</span><div><strong>John Alexander Smith <small>· 15 m</small></strong><em>● Pumping</em></div></header><p>Second letdown is taking its sweet time. I put one tiny lamp on and I am pretending this corner is a little night café.</p><div class="post-visual"><span>Late-night pumping room</span><button type="button" data-action="${state.communityJoined ? "community-create-post" : "community-join"}">${state.communityJoined ? "Create a post" : "Join & Post"}</button></div></article>
   </div></div></div>`;
 }
 
@@ -670,7 +761,7 @@ function experienceScreenMarkup(kind, screen) {
 }
 
 function controlOverlayMarkup(kind, screen) {
-  if (!controlOverlay || !["pump-control", "control"].includes(screen.id)) return "";
+  if (!controlOverlay || !["pump-control", "control", "pump-running", "pumping"].includes(screen.id)) return "";
 
   const titles = {
     help: "Pumping help",
@@ -715,7 +806,8 @@ function controlOverlayMarkup(kind, screen) {
 }
 
 function controlSettingsMarkup(kind, screen) {
-  if (!["pump-control", "control"].includes(screen.id)) return "";
+  if (!["pump-control", "control", "pump-running", "pumping"].includes(screen.id)) return "";
+  const pumping = ["pump-running", "pumping"].includes(screen.id);
   const showManualModes = kind === "hospital" || !state.customModeSaved;
   const modes = [
     ["Stimulation", "Stimulate", "heart"],
@@ -726,7 +818,7 @@ function controlSettingsMarkup(kind, screen) {
   const selector = showManualModes
     ? `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`
     : "";
-  const bestLevelEntry = showManualModes && state.controlMode === "Lactation"
+  const bestLevelEntry = !pumping && showManualModes && state.controlMode === "Lactation"
     ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位">${icon("sparkles", "最佳档位测试")}<span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
     : "";
   const frequencies = [1, 2, 3, 4, 5].map(value => `<button type="button" class="${state.controlFrequency === value ? "active" : ""}" data-action="control-select-frequency" data-value="${value}" aria-pressed="${state.controlFrequency === value}">${value}</button>`).join("");
@@ -750,8 +842,12 @@ function screenMarkup(kind) {
   const digit = screen.id === "code" && state.codeDigit
     ? `<span class="code-digit" aria-hidden="true">${state.codeDigit}</span><span class="next-enabled" aria-hidden="true">Next</span>`
     : "";
-  const volumes = kind === "hospital" && screen.id === "pump-finished"
+  const sessionFinished = ["pump-finished", "finished"].includes(screen.id);
+  const volumes = sessionFinished
     ? `<span class="volume-value left" aria-live="polite">${state.leftVolume}<small>ml</small></span><span class="volume-value right" aria-live="polite">${state.rightVolume}<small>ml</small></span>`
+    : "";
+  const durationValue = sessionFinished
+    ? `<span class="session-duration-value" aria-live="polite">${escapeHtml(state.sessionDuration)}</span>`
     : "";
   const deviceOverlay = screen.image === "home-07-dashboard.png"
     ? `<span class="dashboard-device-frame" aria-hidden="true"><img src="./assets/figma-755/home-pump-control-device.png" width="182" height="138" alt="" draggable="false" /></span>`
@@ -762,14 +858,10 @@ function screenMarkup(kind) {
   const pumpControlButtonMask = screen.image === "home-03-control.png"
     ? `<span class="pump-control-native-button-mask" aria-hidden="true"></span>`
     : "";
-  const customControlMode = kind === "home" && screen.id === "control" && state.customModeSaved
-    ? `<div class="custom-control-mode-card"><div><strong>${escapeHtml(state.customModeName || "Milk Collection Mode-01")}</strong><span>Switch ${icon("chevron-right", "切换模式")}</span></div><p>Alternating massage and pumping, tuned to your saved settings.</p><div><i style="--segment:38%"></i><i style="--segment:62%"></i></div></div>`
+  const customControlMode = kind === "home" && ["control", "pumping"].includes(screen.id) && state.customModeSaved
+    ? `<div class="custom-control-mode-card"><div><strong>${escapeHtml(state.customModeName || "Milk Collection Mode-01")}</strong><span>Switch ${icon("chevron-right", "切换模式")}</span></div><p>${escapeHtml(state.customModeDescription)}</p><div><i style="--segment:38%"></i><i style="--segment:62%"></i></div></div>`
     : "";
   const controlSettings = controlSettingsMarkup(kind, screen);
-  const pumpingLevel = ["pump-running", "pumping"].includes(screen.id)
-    ? `<span class="pumping-level-summary" aria-hidden="true">${state.pumpLevel}</span>
-      <span class="pumping-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 12</small></span>`
-    : "";
   const finishAction = screen.id === "pump-running" ? "hospital-finish-pump" : screen.id === "pumping" ? "finish-pump" : "";
   const holdControl = finishAction
     ? `<div class="pumping-actions">
@@ -786,8 +878,13 @@ function screenMarkup(kind) {
   const calibrationStepChanging = checkSheetVisible && previousCheckScreenId !== null && previousCheckScreenId !== screen.id;
   const calibration = calibrationMarkup(screen, { entering: calibrationEntering, stepChanging: calibrationStepChanging });
   const controlDialog = controlOverlayMarkup(kind, screen);
+  const guideExperience = guideExperienceMarkup(screen);
+  const durationPicker = durationPickerMarkup(screen);
+  const flashlightState = screen.id === "scan" && state.flashlightOn
+    ? `<span class="scanner-flashlight-state">${icon("flashlight", "闪光灯已开启")}<small>On</small></span>`
+    : "";
   previousCheckScreenId = checkSheetVisible ? screen.id : null;
-  return `<div class="screen-frame ${checkSheetVisible ? "calibration-open" : ""} ${controlDialog ? "control-overlay-open" : ""}" style="--content-width:${screen.width};--content-height:${screen.height}">
+  return `<div class="screen-frame ${checkSheetVisible ? "calibration-open" : ""} ${controlDialog ? "control-overlay-open" : ""} ${guideFullscreen || durationPickerOpen ? "secondary-overlay-open" : ""}" style="--content-width:${screen.width};--content-height:${screen.height}">
     <div class="screen-scroll">
       <div class="screen-canvas">
         <img class="figma-screen" src="./assets/figma-755/${screen.image}?v=${VERSION}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
@@ -796,13 +893,15 @@ function screenMarkup(kind) {
         ${pumpControlButtonMask}
         ${customControlMode}
         ${controlSettings}
-        ${pumpingLevel}
-        <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
+        ${flashlightState}
+        <div class="hotspot-layer">${hotspots}${digit}${volumes}${durationValue}</div>
       </div>
     </div>
     ${connection}
     ${calibration}
     ${controlDialog}
+    ${guideExperience}
+    ${durationPicker}
     ${startControl}
     ${holdControl}
   </div>`;
@@ -981,11 +1080,72 @@ function handleAction(action, target) {
       const currentId = screens[step].id;
       navigationOpen = false;
       controlOverlay = "";
+      guideFullscreen = false;
+      durationPickerOpen = false;
       directNavigation = true;
       setState({ [key]: step, ...progressForStep(kind, step), autoAdvanceSuppressed: `${kind}:${currentId}` });
       break;
     }
-    case "screen-back": controlOverlay = ""; goToPreviousScreen(target.dataset.kind); break;
+    case "screen-back": controlOverlay = ""; guideFullscreen = false; durationPickerOpen = false; goToPreviousScreen(target.dataset.kind); break;
+    case "content-card-open": showToast(`${target.dataset.card || "内容卡片"} 详情已打开`); break;
+    case "unsupported-device": showToast(`${target.dataset.device || "该设备"} 不在本次 V4 演示范围内`); break;
+    case "app-tab-home": showToast("Home 首页入口已打开"); break;
+    case "app-tab-device": {
+      const kind = target.dataset.kind || ENTRY;
+      if (kind === "hospital") {
+        const id = state.sessionLogged ? "device-home" : "empty";
+        setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === id) });
+      } else {
+        const id = state.sessionLogged ? "device" : state.homeDeviceConnected ? "connect-device" : "connect-empty";
+        setState({ homeStep: homeScreens.findIndex(screen => screen.id === id) });
+      }
+      break;
+    }
+    case "app-tab-community": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const id = kind === "hospital" ? "hospital-community" : "home-community";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id) });
+      break;
+    }
+    case "app-tab-profile": showToast("Me 个人中心入口已打开"); break;
+    case "app-add-device": {
+      const kind = target.dataset.kind || ENTRY;
+      if (kind === "hospital") setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "manual") });
+      else setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-empty"), homeDeviceConnected: false });
+      break;
+    }
+    case "home-add-another-device": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-empty"), homeDeviceConnected: false }); break;
+    case "hospital-open-scan": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "scan") }); break;
+    case "hospital-refresh-nearby": showToast("附近设备列表已刷新"); break;
+    case "hospital-refresh-bound": showToast("已绑定设备状态已刷新"); break;
+    case "toggle-flashlight": setState({ flashlightOn: !state.flashlightOn }, state.flashlightOn ? "闪光灯已关闭" : "闪光灯已开启"); break;
+    case "delete-code": setState({ codeDigit: "" }); break;
+    case "resend-code": showToast("验证码已重新发送"); break;
+    case "guide-toggle-video": setState({ guideVideoPlaying: !state.guideVideoPlaying }, state.guideVideoPlaying ? "教学视频已暂停" : "教学视频正在播放"); break;
+    case "guide-open-fullscreen": guideFullscreen = true; render(); break;
+    case "guide-close-fullscreen": guideFullscreen = false; render(); break;
+    case "guide-show-how": showToast("先取下集奶杯，再依次拆下法兰和阀门"); break;
+    case "guide-show-warning": showToast("清洁前请关机，并确保电子部件保持干燥"); break;
+    case "ready-open-assistant": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const id = kind === "hospital" ? "hospital-insight-detail" : "home-insight-detail";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id), activeInsight: "Cozy Assistant" });
+      break;
+    }
+    case "ready-open-clean-guide": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const id = kind === "hospital" ? "training-guide" : "guide";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id) });
+      break;
+    }
+    case "ready-contact-support": showToast("Momcozy support · support@momcozy.com"); break;
+    case "edit-session-time": showToast("吸乳日期与时间选择器已打开"); break;
+    case "open-duration-picker": durationPickerOpen = true; render(); break;
+    case "close-duration-picker": durationPickerOpen = false; render(); break;
+    case "select-duration": durationPickerOpen = false; setState({ sessionDuration: target.dataset.value || "20 min 30 sec" }, "吸乳时长已更新"); break;
     case "control-open-help": controlOverlay = "help"; render(); break;
     case "control-open-settings": controlOverlay = "settings"; render(); break;
     case "control-open-mode": controlOverlay = "mode"; render(); break;
@@ -1002,11 +1162,11 @@ function handleAction(action, target) {
     case "control-toggle-auto-lock": setState({ controlAutoLockOn: !state.controlAutoLockOn }); break;
     case "hospital-next": setState({ hospitalStep: Math.min(hospitalScreens.length - 1, state.hospitalStep + 1) }); break;
     case "hospital-prev": setState({ hospitalStep: Math.max(0, state.hospitalStep - 1) }); break;
-    case "enter-code": if (!state.codeDigit) setState({ codeDigit: "4" }, "验证码已填写"); break;
+    case "enter-code": setState({ codeDigit: target.dataset.value || "4" }, "验证码已填写"); break;
     case "submit-code": if (state.codeDigit) setState({ hospitalStep: 5 }); break;
     case "hospital-learn": setState({ hospitalStep: 7 }); break;
     case "hospital-training-ready": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "training-ready") }); break;
-    case "hospital-training-exit": setState({ hospitalStep: 6 }); break;
+    case "hospital-training-exit": goToPreviousScreen("hospital"); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
     case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "院端设备教学已完成"); break;
     case "hospital-start-pump": controlOverlay = ""; setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
@@ -1028,6 +1188,7 @@ function handleAction(action, target) {
     case "home-connection-start-training": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "welcome"), homeDeviceConnected: true }); break;
     case "home-next": setState({ homeStep: Math.min(homeScreens.length - 1, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
+    case "home-training-exit": goToPreviousScreen("home"); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
     case "home-mode-list": controlOverlay = ""; setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-list") }); break;
     case "mode-open-rhythm": setState({
@@ -1158,11 +1319,19 @@ function handleAction(action, target) {
     case "home-open-insight-detail": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-insight-detail"), activeInsight: target.dataset.insightTitle || "Cozy AI coach" }); break;
     case "home-open-community": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-community") }); break;
     case "home-control": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "control") }); break;
-    case "community-join": showToast("已加入 Pumping moms"); break;
-    case "community-share": showToast("状态分享入口已打开"); break;
+    case "community-join": setState({ communityJoined: !state.communityJoined }, state.communityJoined ? "已退出 Pumping moms" : "已加入 Pumping moms"); break;
+    case "community-select-status": setState({ communityStatus: target.dataset.status || "pumping" }, `状态已分享：${target.dataset.status || "pumping"}`); break;
+    case "community-share": {
+      const status = state.communityStatus || "pumping";
+      setState({ communityStatus: status }, `状态已分享：${status}`);
+      break;
+    }
+    case "community-create-post": showToast("群组发帖编辑器已打开"); break;
     case "step-back": {
       const key = `${target.dataset.kind}Step`;
       controlOverlay = "";
+      guideFullscreen = false;
+      durationPickerOpen = false;
       setState({ [key]: Math.max(0, state[key] - 1) });
       break;
     }
@@ -1171,12 +1340,16 @@ function handleAction(action, target) {
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
       const key = `${kind}Step`;
       controlOverlay = "";
+      guideFullscreen = false;
+      durationPickerOpen = false;
       setState({ [key]: Math.min(screens.length - 1, state[key] + 1) });
       break;
     }
     case "reset":
       state = { ...defaults };
       controlOverlay = "";
+      guideFullscreen = false;
+      durationPickerOpen = false;
       stepHistory.hospital = [];
       stepHistory.home = [];
       saveState();
@@ -1193,8 +1366,11 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("input", (event) => {
-  if (!event.target.matches("[data-mode-name-input]")) return;
-  state = { ...state, customModeName: event.target.value };
+  if (!event.target.matches("[data-mode-name-input], [data-mode-description-input]")) return;
+  const patch = event.target.matches("[data-mode-name-input]")
+    ? { customModeName: event.target.value }
+    : { customModeDescription: event.target.value };
+  state = { ...state, ...patch };
   saveState();
 });
 
@@ -1210,6 +1386,12 @@ document.addEventListener("pointercancel", cancelHold);
 document.addEventListener("lostpointercapture", cancelHold);
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && (guideFullscreen || durationPickerOpen)) {
+    guideFullscreen = false;
+    durationPickerOpen = false;
+    render();
+    return;
+  }
   if (event.key === "Escape" && controlOverlay) {
     controlOverlay = "";
     render();
