@@ -1,14 +1,13 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.3.21";
+const VERSION = "0.3.22";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const calibrationScreens = [
-  { id: "check-wear", image: "home-03-control.png", width: 375, height: 956, label: "穿戴检测提示", wearPrompt: true },
   { id: "check-initiation", image: "home-03-control.png", width: 375, height: 956, label: "检查 1 · 泌乳启动", calibration: true },
   { id: "check-fit", image: "home-03-control.png", width: 375, height: 956, label: "检查 2 · 佩戴检测", calibration: true },
   { id: "check-fit-passed", image: "home-03-control.png", width: 375, height: 956, label: "检查 2 · 佩戴通过", calibration: true },
-  { id: "check-comfort", image: "home-03-control.png", width: 375, height: 956, label: "检查 3 · 舒适负压", calibration: true },
-  { id: "check-comfort-found", image: "home-03-control.png", width: 375, height: 956, label: "检查 3 · 舒适度确认", calibration: true }
+  { id: "check-comfort", image: "home-03-control.png", width: 375, height: 956, label: "最佳档位测试", calibration: true, bestLevelTest: true },
+  { id: "check-comfort-found", image: "home-03-control.png", width: 375, height: 956, label: "最佳档位确认", calibration: true, bestLevelTest: true }
 ];
 
 const hospitalScreens = [
@@ -67,7 +66,10 @@ const defaults = {
   pumpRunning: false,
   pumpPaused: false,
   sessionLogged: false,
+  pumpLevel: 1,
   comfortLevel: 4,
+  bestLevelSet: false,
+  controlMode: "Stimulation",
   customModeName: "Milk Collection Mode-01",
   customModeSaved: false,
   selectedManualMode: "Stimulation",
@@ -170,6 +172,14 @@ function hotspot(action, label, x, y, width, height, extra = "") {
   return `<button class="hotspot" data-action="${action}" aria-label="${label}" title="${label}" style="--x:${x};--y:${y};--w:${width};--h:${height}" ${extra}></button>`;
 }
 
+function controlHotspots(includeModeList = false) {
+  return [
+    includeModeList ? hotspot("home-mode-list", "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2) : "",
+    hotspot("control-level-down", "降低预设档位", 8.5, 54.3, 20.0, 4.9),
+    hotspot("control-level-up", "提高预设档位", 71.5, 54.3, 20.0, 4.9)
+  ].join("");
+}
+
 function screenBackHotspot(kind, screen) {
   const backScreens = kind === "hospital"
     ? new Set(["manual", "found", "scan", "code", "binding", "success", "pump-control", "pump-running", "pump-finished", "pump-dashboard"])
@@ -217,7 +227,7 @@ function hospitalHotspots(screen) {
       ].join("");
     case "training-ready":
       return hotspot("hospital-open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
-    case "pump-control": return "";
+    case "pump-control": return controlHotspots();
     case "pump-running":
       return [
         hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
@@ -254,7 +264,7 @@ function homeHotspots(screen) {
         hotspot("home-next", "下一步", 37.6, 89.5, 58.4, 6.7)
       ].join("");
     case "ready": return hotspot("home-next", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
-    case "control": return hotspot("home-mode-list", "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2);
+    case "control": return controlHotspots(true);
     case "pumping":
       return [
         hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
@@ -292,14 +302,13 @@ function connectionMarkup(screen) {
 
 function calibrationStepper(screenId) {
   const statesByScreen = {
-    "check-initiation": ["current", "future", "future"],
-    "check-fit": ["complete", "current", "future"],
-    "check-fit-passed": ["complete", "complete", "future"],
-    "check-comfort": ["complete", "complete", "current"],
-    "check-comfort-found": ["complete", "complete", "complete"]
+    "check-initiation": ["current", "future"],
+    "check-fit": ["complete", "current"],
+    "check-fit-passed": ["complete", "complete"]
   };
   const states = statesByScreen[screenId];
-  const labels = ["Initiation", "Fit check", "Comfort"];
+  if (!states) return `<div class="best-level-kicker">${icon("sparkles", "最佳档位")}<span>Optional · Best level test</span></div>`;
+  const labels = ["Initiation", "Fit check"];
   const track = states.map((status, index) => {
     const step = `<span class="check-step ${status}" aria-current="${status === "current" ? "step" : "false"}">${index + 1}</span>`;
     if (index === states.length - 1) return step;
@@ -332,7 +341,7 @@ function calibrationBody(screen) {
           <div class="fit-card passed"><strong>L</strong><span>Good fit</span></div>
           <div class="fit-card passed"><strong>R</strong><span>Good fit</span></div>
         </div>
-        <div class="next-check-card"><span>Next · Step 3</span><strong>Find maximum comfortable suction</strong></div>
+        <div class="next-check-card ready"><span>Ready to pump</span><strong>Both pumps are fitted and ready to start.</strong></div>
       </div>`;
     case "check-comfort":
       return `<div class="check-body comfort-body">
@@ -353,40 +362,25 @@ function calibrationBody(screen) {
 function calibrationFooter(screen) {
   switch (screen.id) {
     case "check-fit-passed":
-      return `<button type="button" class="check-primary-action" data-action="calibration-next">Continue</button>`;
+      return `<button type="button" class="check-primary-action" data-action="calibration-start-pump">Start pumping</button>`;
     case "check-comfort":
       return `<button type="button" class="check-primary-action" data-action="calibration-next">Confirm this level</button><button type="button" class="check-text-action" data-action="calibration-close">Exit setup</button>`;
     case "check-comfort-found":
-      return `<button type="button" class="check-text-action" data-action="calibration-test-again">Test again</button><button type="button" class="check-primary-action" data-action="calibration-start-pump">Start pumping</button>`;
+      return `<button type="button" class="check-text-action" data-action="calibration-test-again">Test again</button><button type="button" class="check-primary-action" data-action="calibration-use-level">Use this level</button>`;
     default:
       return "";
   }
 }
 
 function calibrationMarkup(screen, motion = {}) {
-  if (!screen.calibration && !screen.wearPrompt) return "";
+  if (!screen.calibration) return "";
   const motionClasses = [motion.entering ? "is-entering" : "", motion.stepChanging ? "is-step-changing" : ""].filter(Boolean).join(" ");
-  if (screen.wearPrompt) {
-    return `<div class="calibration-shade ${motion.entering ? "is-entering" : ""}" aria-hidden="true"></div>
-      <section class="calibration-modal check-wear ${motionClasses}" role="dialog" aria-modal="true" aria-label="Wear both pumps">
-        <button type="button" class="calibration-close" data-action="calibration-close" aria-label="关闭穿戴提示">${icon("x", "关闭穿戴提示")}</button>
-        <span class="wear-kicker">Before pumping</span>
-        <header class="wear-heading"><h1>Wear both pumps</h1><p>Follow the steps below, then keep still.</p></header>
-        <ol class="wear-steps">
-          <li><span>1</span><strong>Assemble the milk collector</strong></li>
-          <li><span>2</span><strong>Center the nipple in the flange</strong></li>
-          <li><span>3</span><strong>Secure both pumps inside your bra</strong></li>
-        </ol>
-        <p class="wear-note">Press Start and remain still during the check.</p>
-        <footer class="check-footer"><button type="button" class="check-primary-action" data-action="calibration-start-check">Start initiation</button></footer>
-      </section>`;
-  }
   const headings = {
     "check-initiation": ["Initiation", "Running the milk-initiation rhythm"],
     "check-fit": ["Fit check", "Keep still while both sides are checked."],
     "check-fit-passed": ["Fit check passed", "Both pumps have a stable seal."],
-    "check-comfort": ["Find your comfort level", "Adjust slowly and stop if it hurts."],
-    "check-comfort-found": ["Comfort level found", "Maximum comfortable suction is set."]
+    "check-comfort": ["Find your best level", "Adjust slowly and stop if it hurts."],
+    "check-comfort-found": ["Best level found", "Your preferred lactation suction is ready."]
   };
   const [title, subtitle] = headings[screen.id];
   return `<div class="calibration-shade ${motion.entering ? "is-entering" : ""}" aria-hidden="true"></div>
@@ -560,6 +554,24 @@ function customModeScreenMarkup(screen) {
   return `<div class="screen-frame mode-screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}"><div class="screen-scroll"><div class="screen-canvas mode-screen-canvas">${content}</div></div></div>`;
 }
 
+function controlSettingsMarkup(kind, screen) {
+  if (!["pump-control", "control"].includes(screen.id)) return "";
+  const showManualModes = kind === "hospital" || !state.customModeSaved;
+  const modes = [
+    ["Stimulation", "heart"],
+    ["Lactation", "droplet"],
+    ["Mixed", "blend"],
+    ["Milk initiation", "waves"]
+  ];
+  const selector = showManualModes
+    ? `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, name)}</span><small>${name}</small></button>`).join("")}</div>`
+    : "";
+  const bestLevelEntry = showManualModes && state.controlMode === "Lactation"
+    ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位">${icon("sparkles", "最佳档位测试")}<span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
+    : "";
+  return `${selector}<span class="control-level-summary" aria-hidden="true">${state.pumpLevel}</span><span class="control-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 12</small></span>${bestLevelEntry}`;
+}
+
 function screenMarkup(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
@@ -585,9 +597,10 @@ function screenMarkup(kind) {
   const customControlMode = kind === "home" && screen.id === "control" && state.customModeSaved
     ? `<div class="custom-control-mode-card"><div><strong>${escapeHtml(state.customModeName || "Milk Collection Mode-01")}</strong><span>Switch ${icon("chevron-right", "切换模式")}</span></div><p>Alternating massage and pumping, tuned to your saved settings.</p><div><i style="--segment:38%"></i><i style="--segment:62%"></i></div></div>`
     : "";
+  const controlSettings = controlSettingsMarkup(kind, screen);
   const pumpingLevel = ["pump-running", "pumping"].includes(screen.id)
-    ? `<span class="pumping-level-summary" aria-hidden="true">${state.comfortLevel}</span>
-      <span class="pumping-level-value" aria-live="polite"><strong>${state.comfortLevel}</strong><small>/ 12</small></span>`
+    ? `<span class="pumping-level-summary" aria-hidden="true">${state.pumpLevel}</span>
+      <span class="pumping-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 12</small></span>`
     : "";
   const finishAction = screen.id === "pump-running" ? "hospital-finish-pump" : screen.id === "pumping" ? "finish-pump" : "";
   const holdControl = finishAction
@@ -600,7 +613,7 @@ function screenMarkup(kind) {
     ? `<button type="button" class="start-pumping-floating" data-action="${kind === "hospital" ? "hospital-start-pump" : "start-pump"}">Start Pumping</button>`
     : "";
   const connection = kind === "home" ? connectionMarkup(screen) : "";
-  const checkSheetVisible = Boolean(screen.calibration || screen.wearPrompt);
+  const checkSheetVisible = Boolean(screen.calibration);
   const calibrationEntering = checkSheetVisible && previousCheckScreenId === null;
   const calibrationStepChanging = checkSheetVisible && previousCheckScreenId !== null && previousCheckScreenId !== screen.id;
   const calibration = calibrationMarkup(screen, { entering: calibrationEntering, stepChanging: calibrationStepChanging });
@@ -613,6 +626,7 @@ function screenMarkup(kind) {
         ${pumpControlDevice}
         ${pumpControlButtonMask}
         ${customControlMode}
+        ${controlSettings}
         ${pumpingLevel}
         <div class="hotspot-layer">${hotspots}${digit}${volumes}</div>
       </div>
@@ -657,7 +671,7 @@ function prototypeNavigation(kind) {
         { label: "连接设备", icon: "link-2", start: 0, end: 4 },
         { label: "使用教学", icon: "book-open", start: 5, end: 7 },
         { label: "模式设置", icon: "sliders-horizontal", start: homeScreens.findIndex(screen => screen.id === "control"), end: homeScreens.findIndex(screen => screen.id === "mode-introduction") },
-        { label: "吸乳与记录", icon: "activity", start: homeScreens.findIndex(screen => screen.id === "check-wear"), end: homeScreens.length - 1 }
+        { label: "吸乳与记录", icon: "activity", start: homeScreens.findIndex(screen => screen.id === "check-initiation"), end: homeScreens.length - 1 }
       ];
   const items = groups.map(group => {
     const children = screens.slice(group.start, group.end + 1).map((screen, offset) => {
@@ -810,7 +824,7 @@ function handleAction(action, target) {
     case "hospital-training-exit": setState({ hospitalStep: 6 }); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
     case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "院端设备教学已完成"); break;
-    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-wear"), pumpRunning: false, pumpPaused: false }); break;
+    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
     case "hospital-finish-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false }); break;
     case "hospital-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
     case "hospital-left-down": setState({ leftVolume: Math.max(0, state.leftVolume - 10) }); break;
@@ -838,7 +852,8 @@ function handleAction(action, target) {
     case "mode-apply-rhythm": setState({
       homeStep: homeScreens.findIndex(screen => screen.id === "control"),
       customModeName: state.selectedManualMode,
-      customModeSaved: true
+      customModeSaved: false,
+      controlMode: state.selectedManualMode
     }, `${state.selectedManualMode} · ${state.selectedManualRhythm} 已应用`); break;
     case "mode-start-create": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-name"), customModeSaved: false }); break;
     case "mode-save-name": setState({
@@ -849,7 +864,8 @@ function handleAction(action, target) {
     case "mode-use-preset": setState({
       homeStep: homeScreens.findIndex(screen => screen.id === "control"),
       customModeName: target.dataset.modeName || "Stimulation",
-      customModeSaved: true
+      customModeSaved: true,
+      controlMode: "Custom"
     }, "模式已应用"); break;
     case "mode-edit-section": setState({
       homeStep: homeScreens.findIndex(screen => screen.id === "mode-editor"),
@@ -885,15 +901,23 @@ function handleAction(action, target) {
     case "mode-save-to-control": setState({
       homeStep: homeScreens.findIndex(screen => screen.id === "control"),
       customModeSaved: true,
+      controlMode: "Custom",
       modeTrialPlaying: false
     }, "自定义模式已保存并应用"); break;
-    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-wear"), pumpRunning: false, pumpPaused: false }); break;
-    case "calibration-start-check": {
+    case "control-select-mode": setState({
+      controlMode: target.dataset.value || "Stimulation",
+      customModeSaved: false
+    }, `${target.dataset.value || "Stimulation"} 模式已选择`); break;
+    case "control-level-down": setState({ pumpLevel: Math.max(1, state.pumpLevel - 1) }); break;
+    case "control-level-up": setState({ pumpLevel: Math.min(12, state.pumpLevel + 1) }); break;
+    case "open-best-level": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-initiation") });
+      if (state.controlMode !== "Lactation") break;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort") });
       break;
     }
+    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
     case "calibration-next": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
@@ -914,10 +938,22 @@ function handleAction(action, target) {
       setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort") });
       break;
     }
+    case "calibration-use-level": {
+      const kind = ENTRY === "hospital" ? "hospital" : "home";
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const controlId = kind === "hospital" ? "pump-control" : "control";
+      setState({
+        [`${kind}Step`]: screens.findIndex(screen => screen.id === controlId),
+        pumpLevel: state.comfortLevel,
+        bestLevelSet: true,
+        controlMode: "Lactation"
+      }, `最佳档位已设为 ${state.comfortLevel}`);
+      break;
+    }
     case "comfort-down": setState({ comfortLevel: Math.max(1, state.comfortLevel - 1) }); break;
     case "comfort-up": setState({ comfortLevel: Math.min(12, state.comfortLevel + 1) }); break;
-    case "pump-level-down": setState({ comfortLevel: Math.max(1, state.comfortLevel - 1) }); break;
-    case "pump-level-up": setState({ comfortLevel: Math.min(12, state.comfortLevel + 1) }); break;
+    case "pump-level-down": setState({ pumpLevel: Math.max(1, state.pumpLevel - 1) }); break;
+    case "pump-level-up": setState({ pumpLevel: Math.min(12, state.pumpLevel + 1) }); break;
     case "calibration-start-pump": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
