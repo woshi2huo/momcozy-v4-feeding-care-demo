@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.3.22";
+const VERSION = "0.4.0";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const calibrationScreens = [
@@ -9,6 +9,12 @@ const calibrationScreens = [
   { id: "check-comfort", image: "home-03-control.png", width: 375, height: 956, label: "最佳档位测试", calibration: true, bestLevelTest: true },
   { id: "check-comfort-found", image: "home-03-control.png", width: 375, height: 956, label: "最佳档位确认", calibration: true, bestLevelTest: true }
 ];
+
+// Kept as an explicit rollback reference; the PNG assets remain unchanged.
+const rollbackScreens0322 = {
+  dashboard: { image: "home-07-dashboard.png", width: 402, height: 874 },
+  device: { image: "home-08-device.png", width: 393, height: 852 }
+};
 
 const hospitalScreens = [
   { id: "empty", image: "hospital-00-empty.png", width: 393, height: 852, label: "设备页空态" },
@@ -27,8 +33,10 @@ const hospitalScreens = [
   { id: "pump-running", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
   { id: "pump-finished", image: "home-05-finished.png", width: 402, height: 874, label: "记录奶量" },
   { id: "pump-logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
-  { id: "pump-dashboard", image: "home-07-dashboard.png", width: 402, height: 874, label: "吸乳子场景卡" },
-  { id: "device-home", image: "home-08-device.png", width: 393, height: 852, label: "设备子首页" }
+  { id: "pump-dashboard", view: "insights-home", width: 402, height: 1180, label: "AI 吸乳子首页" },
+  { id: "device-home", view: "device-ai", width: 393, height: 852, label: "AI 设备页" },
+  { id: "hospital-insight-detail", view: "insight-detail", width: 402, height: 874, label: "AI 洞察详情" },
+  { id: "hospital-community", view: "community", width: 402, height: 1040, label: "Pumping moms 群组" }
 ];
 
 const homeScreens = [
@@ -52,8 +60,10 @@ const homeScreens = [
   { id: "pumping", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
   { id: "finished", image: "home-05-finished.png", width: 402, height: 874, label: "完成吸乳" },
   { id: "logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
-  { id: "dashboard", image: "home-07-dashboard.png", width: 402, height: 874, label: "吸乳数据" },
-  { id: "device", image: "home-08-device.png", width: 393, height: 852, label: "我的设备" }
+  { id: "dashboard", view: "insights-home", width: 402, height: 1180, label: "AI 吸乳子首页" },
+  { id: "device", view: "device-ai", width: 393, height: 852, label: "AI 设备页" },
+  { id: "home-insight-detail", view: "insight-detail", width: 402, height: 874, label: "AI 洞察详情" },
+  { id: "home-community", view: "community", width: 402, height: 1040, label: "Pumping moms 群组" }
 ];
 
 const defaults = {
@@ -83,6 +93,7 @@ const defaults = {
   ],
   leftVolume: 0,
   rightVolume: 0,
+  activeInsight: "Daily rhythm",
   autoAdvanceSuppressed: ""
 };
 
@@ -554,6 +565,102 @@ function customModeScreenMarkup(screen) {
   return `<div class="screen-frame mode-screen-frame" style="--content-width:${screen.width};--content-height:${screen.height}"><div class="screen-scroll"><div class="screen-canvas mode-screen-canvas">${content}</div></div></div>`;
 }
 
+function appStatusBar() {
+  return `<div class="ai-statusbar"><strong>9:41</strong><span>${icon("signal", "蜂窝网络")}${icon("wifi", "无线网络")}${icon("battery-full", "电池")}</span></div>`;
+}
+
+function experienceHeader(kind, title, action = "screen-back") {
+  return `<header class="ai-page-header">
+    <button type="button" data-action="${action}" data-kind="${kind}" aria-label="返回上一个页面">${icon("chevron-left", "返回")}</button>
+    <h1>${title}</h1><span></span>
+  </header>`;
+}
+
+function deviceAiScreen(kind) {
+  const dashboardAction = kind === "hospital" ? "hospital-open-insights" : "home-open-insights";
+  const controlAction = kind === "hospital" ? "hospital-open-control" : "home-control";
+  const detailAction = kind === "hospital" ? "hospital-open-insight-detail" : "home-open-insight-detail";
+  const communityAction = kind === "hospital" ? "hospital-open-community" : "home-open-community";
+  return `<div class="screen-frame experience-frame" style="--content-width:393;--content-height:852">
+    <div class="screen-scroll"><div class="screen-canvas device-ai-canvas">
+      <img class="figma-screen device-ai-base" src="./assets/figma-755/${rollbackScreens0322.device.image}?v=${VERSION}" width="393" height="852" alt="我的设备" draggable="false" />
+      <button type="button" class="device-pump-link" data-action="${controlAction}" aria-label="打开 Breast Pump 控制页"></button>
+      <section class="device-ai-summary" aria-label="AI 吸乳数据洞察">
+        <button type="button" class="cozy-ai-entry" data-action="${detailAction}" data-insight-title="Cozy AI coach" aria-label="打开 Cozy AI">
+          <span class="cozy-ai-mark">${icon("sparkles", "Cozy AI")}</span><span>Cozy AI</span>
+        </button>
+        <div><strong>AI pumping insights</strong><p>Your output is most consistent between 9–11 AM this week.</p></div>
+        <button type="button" class="device-insight-more" data-action="${dashboardAction}">View more ${icon("chevron-right", "查看更多")}</button>
+      </section>
+      <button type="button" class="device-community-entry" data-action="${communityAction}">
+        <span class="community-bubble-stack" aria-hidden="true"><i>pumping</i><i>need<br>company</i><i>tired</i></span>
+        <span class="community-entry-copy"><small>Community group</small><strong>Pumping moms</strong><em><span class="member-dots">A M S</span>128 moms active today</em></span>
+        <span class="community-entry-arrow">${icon("chevron-right", "进入群组")}</span>
+      </button>
+    </div></div>
+  </div>`;
+}
+
+function insightCallout(kind, title, copy) {
+  const action = kind === "hospital" ? "hospital-open-insight-detail" : "home-open-insight-detail";
+  return `<aside class="chart-insight"><span class="chart-insight-icon">${icon("sparkles", "AI 洞察")}</span><div><strong>AI Insight</strong><p>${copy}</p></div><button type="button" data-action="${action}" data-insight-title="${title}">More</button></aside>`;
+}
+
+function insightsHomeScreen(kind) {
+  const deviceAction = kind === "hospital" ? "hospital-return-device" : "home-device";
+  return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:1180">
+    <div class="screen-scroll"><div class="screen-canvas insights-home-canvas">
+      ${appStatusBar()}
+      ${experienceHeader(kind, "Pumping")}
+      <div class="insights-scroll-content">
+        <section class="insights-hero"><span>${icon("sparkles", "Cozy AI")}</span><div><small>Cozy AI weekly read</small><strong>Your morning sessions are becoming more predictable.</strong></div></section>
+        <article class="data-chart-card">
+          <header><div><small>7-day trend</small><h2>Daily volume</h2></div><strong>680 <small>ml</small></strong></header>
+          <div class="volume-bars" aria-label="过去七天奶量柱状图"><i style="--h:46%"><b>M</b></i><i style="--h:58%"><b>T</b></i><i style="--h:52%"><b>W</b></i><i style="--h:70%"><b>T</b></i><i style="--h:64%"><b>F</b></i><i style="--h:84%"><b>S</b></i><i class="today" style="--h:78%"><b>S</b></i></div>
+          ${insightCallout(kind, "Daily volume", "Volume is 12% above your 7-day average, led by two stronger morning sessions.")}
+        </article>
+        <article class="data-chart-card">
+          <header><div><small>Session rhythm</small><h2>Letdown & duration</h2></div><strong>18 <small>min</small></strong></header>
+          <div class="rhythm-chart" aria-label="吸乳节奏趋势图"><svg viewBox="0 0 320 92" role="img"><path d="M4 72 C35 64 48 25 79 38 S126 72 156 47 S205 20 236 41 S282 68 316 25" fill="none" stroke="#8f0027" stroke-width="4" stroke-linecap="round"/><path d="M4 82 L316 82" stroke="#eadde1" stroke-width="1"/></svg><span>9:35 AM</span><span>9:53 AM</span></div>
+          ${insightCallout(kind, "Session rhythm", "Your second letdown arrived 2 minutes earlier when using the Gentle rhythm.")}
+        </article>
+        <article class="data-chart-card efficiency-card">
+          <header><div><small>Pattern quality</small><h2>Efficiency</h2></div><strong>86<small>%</small></strong></header>
+          <div class="efficiency-metrics"><span><b>4</b><small>sessions</small></span><span><b>170</b><small>ml avg.</small></span><span><b>4.8</b><small>level avg.</small></span></div>
+          ${insightCallout(kind, "Efficiency", "Level 5 gives your best output-to-comfort balance; keep it as tomorrow's starting point.")}
+        </article>
+        <button type="button" class="insights-device-dock" data-action="${deviceAction}"><img src="./assets/figma-755/home-pump-control-device.png" alt="V4 吸乳器" /><span><small>Connected device</small><strong>Momcozy V4</strong></span>${icon("chevron-right", "返回设备页")}</button>
+      </div>
+    </div></div>
+  </div>`;
+}
+
+function insightDetailScreen(kind) {
+  return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:874"><div class="screen-scroll"><div class="screen-canvas insight-detail-canvas">
+    ${appStatusBar()}${experienceHeader(kind, "AI Insight")}
+    <section class="insight-detail-hero"><span>${icon("sparkles", "Cozy AI")}</span><small>Cozy AI analysis</small><h2>${escapeHtml(state.activeInsight)}</h2><p>Built from your recent sessions, saved levels and rhythm choices.</p></section>
+    <section class="insight-detail-body"><article><small>What changed</small><strong>Your pattern is becoming more stable.</strong><p>Morning sessions now vary by less than 8%, while your average session is 2 minutes shorter than last week.</p></article><article><small>Why it matters</small><strong>Consistency can make planning easier.</strong><p>The strongest signal appears when you start between 9:00 and 11:00 AM and keep the first five minutes at a comfortable level.</p></article><article class="insight-next-step"><span>${icon("lightbulb", "建议")}</span><div><small>Try next</small><strong>Start tomorrow at level ${state.bestLevelSet ? state.comfortLevel : 5}</strong><p>Use Gentle rhythm, then reassess after the first letdown.</p></div></article></section>
+  </div></div></div>`;
+}
+
+function communityScreen(kind) {
+  const bubbles = [["pumping","19","large"],["tired","14","medium"],["hands full","4","small"],["need company","18","hero"],["can't sleep","11","medium"],["baby sleeping","6","medium"],["music on","8","large"],["cluster feeding","7","small"]];
+  return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:1040"><div class="screen-scroll"><div class="screen-canvas community-canvas">
+    ${appStatusBar()}${experienceHeader(kind, "")}
+    <section class="community-heading"><div><h1>Pumping moms</h1><p><span class="member-dots">A M S</span>128 moms active today</p></div><button type="button" data-action="community-join">Join</button><p>A soft place for pump timers, bottle warmers, and tiny wins while the house is asleep.</p></section>
+    <section class="community-status"><header><h2>Moms’ current status</h2><button type="button" data-action="community-share">Share yours</button></header><div class="status-bubbles">${bubbles.map(([label,count,size]) => `<button type="button" class="status-bubble ${size}" data-action="community-share"><strong>${label}</strong><small>${count}</small></button>`).join("")}</div><button type="button" class="community-share-bar" data-action="community-share">Want to say more about it?<span>Share</span></button></section>
+    <article class="community-post"><header><span class="post-avatar">J</span><div><strong>John Alexander Smith <small>· 15 m</small></strong><em>● Pumping</em></div></header><p>Second letdown is taking its sweet time. I put one tiny lamp on and I am pretending this corner is a little night café.</p><div class="post-visual"><span>Late-night pumping room</span><button type="button" data-action="community-join">Join & Post</button></div></article>
+  </div></div></div>`;
+}
+
+function experienceScreenMarkup(kind, screen) {
+  if (screen.view === "device-ai") return deviceAiScreen(kind);
+  if (screen.view === "insights-home") return insightsHomeScreen(kind);
+  if (screen.view === "insight-detail") return insightDetailScreen(kind);
+  if (screen.view === "community") return communityScreen(kind);
+  return "";
+}
+
 function controlSettingsMarkup(kind, screen) {
   if (!["pump-control", "control"].includes(screen.id)) return "";
   const showManualModes = kind === "hospital" || !state.customModeSaved;
@@ -576,6 +683,7 @@ function screenMarkup(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
   const screen = screens[step];
+  if (screen.view) return experienceScreenMarkup(kind, screen);
   if (kind === "home" && screen.custom) return customModeScreenMarkup(screen);
   const pageHotspots = kind === "hospital" ? hospitalHotspots(screen) : homeHotspots(screen);
   const hotspots = `${screenBackHotspot(kind, screen)}${pageHotspots}`;
@@ -762,7 +870,7 @@ function progressForStep(kind, step) {
       trainingDone: step >= 11,
       pumpRunning: currentId === "pump-running",
       pumpPaused: false,
-      sessionLogged: ["pump-logged", "pump-dashboard", "device-home"].includes(currentId)
+      sessionLogged: ["pump-logged", "pump-dashboard", "device-home", "hospital-insight-detail", "hospital-community"].includes(currentId)
     };
   }
   return {
@@ -770,7 +878,7 @@ function progressForStep(kind, step) {
     trainingDone: step >= 8,
     pumpRunning: currentId === "pumping",
     pumpPaused: false,
-    sessionLogged: ["logged", "dashboard", "device"].includes(currentId)
+    sessionLogged: ["logged", "dashboard", "device", "home-insight-detail", "home-community"].includes(currentId)
   };
 }
 
@@ -833,6 +941,9 @@ function handleAction(action, target) {
     case "hospital-save-session": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-logged"), sessionLogged: true }, `已记录 ${state.leftVolume + state.rightVolume} ml`); break;
     case "hospital-show-dashboard": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard") }); break;
     case "hospital-return-device": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "device-home") }); break;
+    case "hospital-open-insights": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard") }); break;
+    case "hospital-open-insight-detail": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "hospital-insight-detail"), activeInsight: target.dataset.insightTitle || "Cozy AI coach" }); break;
+    case "hospital-open-community": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "hospital-community") }); break;
     case "home-connection-found": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-found") }); break;
     case "home-connection-connect": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-connecting") }); break;
     case "home-connection-cancel": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-empty") }); break;
@@ -966,7 +1077,12 @@ function handleAction(action, target) {
     case "save-session": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "logged"), sessionLogged: true }, "吸乳记录已保存"); break;
     case "show-dashboard": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "dashboard") }); break;
     case "home-device": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "device") }); break;
+    case "home-open-insights": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "dashboard") }); break;
+    case "home-open-insight-detail": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-insight-detail"), activeInsight: target.dataset.insightTitle || "Cozy AI coach" }); break;
+    case "home-open-community": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-community") }); break;
     case "home-control": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "control") }); break;
+    case "community-join": showToast("已加入 Pumping moms"); break;
+    case "community-share": showToast("状态分享入口已打开"); break;
     case "step-back": {
       const key = `${target.dataset.kind}Step`;
       setState({ [key]: Math.max(0, state[key] - 1) });
