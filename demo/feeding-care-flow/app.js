@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const calibrationScreens = [
@@ -77,6 +77,11 @@ const defaults = {
   pumpPaused: false,
   sessionLogged: false,
   pumpLevel: 1,
+  controlFrequency: 1,
+  controlLight: "Clear",
+  controlLightOn: true,
+  controlSoundOn: true,
+  controlAutoLockOn: true,
   comfortLevel: 4,
   bestLevelSet: false,
   controlMode: "Stimulation",
@@ -103,6 +108,7 @@ let holdTimer = null;
 let holdTarget = null;
 let navigationOpen = false;
 let directNavigation = false;
+let controlOverlay = "";
 let previousCheckScreenId = null;
 let suppressStepHistory = false;
 const stepHistory = { hospital: [], home: [] };
@@ -183,9 +189,11 @@ function hotspot(action, label, x, y, width, height, extra = "") {
   return `<button class="hotspot" data-action="${action}" aria-label="${label}" title="${label}" style="--x:${x};--y:${y};--w:${width};--h:${height}" ${extra}></button>`;
 }
 
-function controlHotspots(includeModeList = false) {
+function controlHotspots(kind) {
   return [
-    includeModeList ? hotspot("home-mode-list", "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2) : "",
+    hotspot("control-open-help", "打开吸乳帮助", 73.0, 4.3, 11.0, 5.7),
+    hotspot("control-open-settings", "打开吸乳器设置", 85.0, 4.3, 11.0, 5.7),
+    hotspot(kind === "home" ? "home-mode-list" : "control-open-mode", "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2),
     hotspot("control-level-down", "降低预设档位", 8.5, 54.3, 20.0, 4.9),
     hotspot("control-level-up", "提高预设档位", 71.5, 54.3, 20.0, 4.9)
   ].join("");
@@ -238,7 +246,7 @@ function hospitalHotspots(screen) {
       ].join("");
     case "training-ready":
       return hotspot("hospital-open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
-    case "pump-control": return controlHotspots();
+    case "pump-control": return controlHotspots("hospital");
     case "pump-running":
       return [
         hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
@@ -275,7 +283,7 @@ function homeHotspots(screen) {
         hotspot("home-next", "下一步", 37.6, 89.5, 58.4, 6.7)
       ].join("");
     case "ready": return hotspot("home-next", "开始使用 V4", 6.0, 49.5, 88.0, 6.0);
-    case "control": return controlHotspots(true);
+    case "control": return controlHotspots("home");
     case "pumping":
       return [
         hotspot("pump-level-down", "降低吸乳档位", 8.5, 54.3, 20.0, 4.9),
@@ -661,22 +669,74 @@ function experienceScreenMarkup(kind, screen) {
   return "";
 }
 
+function controlOverlayMarkup(kind, screen) {
+  if (!controlOverlay || !["pump-control", "control"].includes(screen.id)) return "";
+
+  const titles = {
+    help: "Pumping help",
+    settings: "Pump settings",
+    mode: "Switch mode"
+  };
+  let body = "";
+  let footerLabel = "Done";
+
+  if (controlOverlay === "help") {
+    const items = [
+      ["scan-heart", "Wear both pumps securely", "Keep the collection cups centered and upright before starting."],
+      ["shield-check", "Automatic checks come first", "Initiation and fit check run automatically after Start Pumping."],
+      ["hand", "Finish with a long press", "Hold the finish control for 1.2 seconds to prevent accidental stops."]
+    ];
+    body = `<div class="control-help-list">${items.map(([itemIcon, title, copy]) => `<article><span>${icon(itemIcon, title)}</span><div><strong>${title}</strong><p>${copy}</p></div></article>`).join("")}</div>`;
+    footerLabel = "Got it";
+  } else if (controlOverlay === "settings") {
+    body = `<div class="control-settings-list">
+      <div class="control-device-status"><span>${icon("bluetooth", "蓝牙")}</span><div><small>Connected pump</small><strong>Momcozy V4</strong></div><em>Connected</em></div>
+      <button type="button" class="control-setting-row" data-action="control-toggle-sound" aria-pressed="${state.controlSoundOn}"><span>${icon("volume-2", "声音反馈")}<span><strong>Sound feedback</strong><small>Play a tone for control changes</small></span></span><i class="control-setting-toggle ${state.controlSoundOn ? "on" : ""}"><b></b></i></button>
+      <button type="button" class="control-setting-row" data-action="control-toggle-auto-lock" aria-pressed="${state.controlAutoLockOn}"><span>${icon("lock-keyhole", "自动锁定")}<span><strong>Auto-lock controls</strong><small>Lock controls after pumping starts</small></span></span><i class="control-setting-toggle ${state.controlAutoLockOn ? "on" : ""}"><b></b></i></button>
+    </div>`;
+  } else {
+    const modes = [
+      ["Stimulation", "Stimulate", "heart", "Gentle rhythm for milk release"],
+      ["Lactation", "Lactation", "droplet", "Steady expression rhythm"],
+      ["Mixed", "Mixed", "blend", "Alternates stimulation and expression"],
+      ["Milk initiation", "Milk initiation", "waves", "Supports the first letdown"]
+    ];
+    body = `<p class="control-mode-note">Choose a standard pumping mode for this session.</p><div class="control-mode-sheet-list">${modes.map(([value, label, modeIcon, copy]) => `<button type="button" class="${state.controlMode === value ? "selected" : ""}" data-action="control-sheet-select-mode" data-value="${value}" aria-pressed="${state.controlMode === value}"><span>${icon(modeIcon, label)}</span><span><strong>${label}</strong><small>${copy}</small></span>${icon(state.controlMode === value ? "check" : "chevron-right", state.controlMode === value ? "已选择" : "选择")}</button>`).join("")}</div>`;
+    footerLabel = kind === "hospital" ? "Close" : "Manage modes";
+  }
+
+  const footerAction = controlOverlay === "mode" && kind === "home" ? "home-mode-list" : "control-close-overlay";
+  return `<button type="button" class="control-overlay-shade" data-action="control-close-overlay" aria-label="关闭${titles[controlOverlay]}"></button>
+    <section class="control-overlay-sheet ${controlOverlay}" role="dialog" aria-modal="true" aria-label="${titles[controlOverlay]}">
+      <header><h2>${titles[controlOverlay]}</h2><button type="button" data-action="control-close-overlay" aria-label="关闭">${icon("x", "关闭")}</button></header>
+      <div class="control-overlay-body">${body}</div>
+      <footer><button type="button" class="control-overlay-action" data-action="${footerAction}">${footerLabel}</button></footer>
+    </section>`;
+}
+
 function controlSettingsMarkup(kind, screen) {
   if (!["pump-control", "control"].includes(screen.id)) return "";
   const showManualModes = kind === "hospital" || !state.customModeSaved;
   const modes = [
-    ["Stimulation", "heart"],
-    ["Lactation", "droplet"],
-    ["Mixed", "blend"],
-    ["Milk initiation", "waves"]
+    ["Stimulation", "Stimulate", "heart"],
+    ["Lactation", "Lactation", "droplet"],
+    ["Mixed", "Mixed", "blend"],
+    ["Milk initiation", "Milk initiation", "waves"]
   ];
   const selector = showManualModes
-    ? `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, name)}</span><small>${name}</small></button>`).join("")}</div>`
+    ? `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`
     : "";
   const bestLevelEntry = showManualModes && state.controlMode === "Lactation"
     ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位">${icon("sparkles", "最佳档位测试")}<span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
     : "";
-  return `${selector}<span class="control-level-summary" aria-hidden="true">${state.pumpLevel}</span><span class="control-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 12</small></span>${bestLevelEntry}`;
+  const frequencies = [1, 2, 3, 4, 5].map(value => `<button type="button" class="${state.controlFrequency === value ? "active" : ""}" data-action="control-select-frequency" data-value="${value}" aria-pressed="${state.controlFrequency === value}">${value}</button>`).join("");
+  const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" data-action="control-select-light" data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
+  return `${selector}
+    <span class="control-level-summary" aria-hidden="true">${state.pumpLevel}</span><span class="control-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 12</small></span>${bestLevelEntry}
+    <span class="control-frequency-summary" aria-live="polite">${state.controlFrequency}</span><div class="control-frequency-selector" aria-label="Frequency">${frequencies}</div>
+    <span class="control-light-summary" aria-live="polite">${state.controlLightOn ? escapeHtml(state.controlLight) : "Off"}</span>
+    <button type="button" class="control-light-toggle ${state.controlLightOn ? "on" : ""}" data-action="control-toggle-light" aria-label="${state.controlLightOn ? "关闭灯光" : "打开灯光"}" aria-pressed="${state.controlLightOn}"><i></i></button>
+    <div class="control-light-selector ${state.controlLightOn ? "" : "disabled"}" aria-label="Light">${lightOptions}</div>`;
 }
 
 function screenMarkup(kind) {
@@ -725,8 +785,9 @@ function screenMarkup(kind) {
   const calibrationEntering = checkSheetVisible && previousCheckScreenId === null;
   const calibrationStepChanging = checkSheetVisible && previousCheckScreenId !== null && previousCheckScreenId !== screen.id;
   const calibration = calibrationMarkup(screen, { entering: calibrationEntering, stepChanging: calibrationStepChanging });
+  const controlDialog = controlOverlayMarkup(kind, screen);
   previousCheckScreenId = checkSheetVisible ? screen.id : null;
-  return `<div class="screen-frame ${checkSheetVisible ? "calibration-open" : ""}" style="--content-width:${screen.width};--content-height:${screen.height}">
+  return `<div class="screen-frame ${checkSheetVisible ? "calibration-open" : ""} ${controlDialog ? "control-overlay-open" : ""}" style="--content-width:${screen.width};--content-height:${screen.height}">
     <div class="screen-scroll">
       <div class="screen-canvas">
         <img class="figma-screen" src="./assets/figma-755/${screen.image}?v=${VERSION}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
@@ -741,6 +802,7 @@ function screenMarkup(kind) {
     </div>
     ${connection}
     ${calibration}
+    ${controlDialog}
     ${startControl}
     ${holdControl}
   </div>`;
@@ -918,11 +980,26 @@ function handleAction(action, target) {
       const step = Math.max(0, Math.min(screens.length - 1, Number(target.dataset.step) || 0));
       const currentId = screens[step].id;
       navigationOpen = false;
+      controlOverlay = "";
       directNavigation = true;
       setState({ [key]: step, ...progressForStep(kind, step), autoAdvanceSuppressed: `${kind}:${currentId}` });
       break;
     }
-    case "screen-back": goToPreviousScreen(target.dataset.kind); break;
+    case "screen-back": controlOverlay = ""; goToPreviousScreen(target.dataset.kind); break;
+    case "control-open-help": controlOverlay = "help"; render(); break;
+    case "control-open-settings": controlOverlay = "settings"; render(); break;
+    case "control-open-mode": controlOverlay = "mode"; render(); break;
+    case "control-close-overlay": controlOverlay = ""; render(); break;
+    case "control-sheet-select-mode": {
+      controlOverlay = "";
+      setState({ controlMode: target.dataset.value || "Stimulation", customModeSaved: false }, `${target.dataset.value || "Stimulation"} 模式已选择`);
+      break;
+    }
+    case "control-select-frequency": setState({ controlFrequency: Math.max(1, Math.min(5, Number(target.dataset.value) || 1)) }); break;
+    case "control-select-light": setState({ controlLight: target.dataset.value || "Clear" }); break;
+    case "control-toggle-light": setState({ controlLightOn: !state.controlLightOn }, state.controlLightOn ? "灯光已关闭" : "灯光已打开"); break;
+    case "control-toggle-sound": setState({ controlSoundOn: !state.controlSoundOn }); break;
+    case "control-toggle-auto-lock": setState({ controlAutoLockOn: !state.controlAutoLockOn }); break;
     case "hospital-next": setState({ hospitalStep: Math.min(hospitalScreens.length - 1, state.hospitalStep + 1) }); break;
     case "hospital-prev": setState({ hospitalStep: Math.max(0, state.hospitalStep - 1) }); break;
     case "enter-code": if (!state.codeDigit) setState({ codeDigit: "4" }, "验证码已填写"); break;
@@ -932,7 +1009,7 @@ function handleAction(action, target) {
     case "hospital-training-exit": setState({ hospitalStep: 6 }); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
     case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "院端设备教学已完成"); break;
-    case "hospital-start-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
+    case "hospital-start-pump": controlOverlay = ""; setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
     case "hospital-finish-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false }); break;
     case "hospital-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
     case "hospital-left-down": setState({ leftVolume: Math.max(0, state.leftVolume - 10) }); break;
@@ -952,7 +1029,7 @@ function handleAction(action, target) {
     case "home-next": setState({ homeStep: Math.min(homeScreens.length - 1, state.homeStep + 1) }); break;
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
-    case "home-mode-list": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-list") }); break;
+    case "home-mode-list": controlOverlay = ""; setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-list") }); break;
     case "mode-open-rhythm": setState({
       homeStep: homeScreens.findIndex(screen => screen.id === "mode-rhythm"),
       selectedManualMode: target.dataset.modeName || "Stimulation",
@@ -1028,7 +1105,7 @@ function handleAction(action, target) {
       setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort") });
       break;
     }
-    case "start-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
+    case "start-pump": controlOverlay = ""; setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
     case "calibration-next": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
@@ -1085,6 +1162,7 @@ function handleAction(action, target) {
     case "community-share": showToast("状态分享入口已打开"); break;
     case "step-back": {
       const key = `${target.dataset.kind}Step`;
+      controlOverlay = "";
       setState({ [key]: Math.max(0, state[key] - 1) });
       break;
     }
@@ -1092,11 +1170,13 @@ function handleAction(action, target) {
       const kind = target.dataset.kind;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
       const key = `${kind}Step`;
+      controlOverlay = "";
       setState({ [key]: Math.min(screens.length - 1, state[key] + 1) });
       break;
     }
     case "reset":
       state = { ...defaults };
+      controlOverlay = "";
       stepHistory.hospital = [];
       stepHistory.home = [];
       saveState();
@@ -1130,6 +1210,11 @@ document.addEventListener("pointercancel", cancelHold);
 document.addEventListener("lostpointercapture", cancelHold);
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && controlOverlay) {
+    controlOverlay = "";
+    render();
+    return;
+  }
   const target = event.target.closest("[data-hold-action]");
   if (!target || !["Enter", " "].includes(event.key)) return;
   event.preventDefault();
