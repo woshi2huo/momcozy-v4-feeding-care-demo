@@ -1,13 +1,16 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.2";
+const VERSION = "0.4.3";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
+const CONTROL_IMAGE = "home-03-control-v043.png";
+const PUMPING_IMAGE = "home-04-pumping-v043.png";
+
 const calibrationScreens = [
-  { id: "check-initiation", image: "home-03-control.png", width: 375, height: 956, label: "检查 1 · 泌乳启动", calibration: true },
-  { id: "check-fit", image: "home-03-control.png", width: 375, height: 956, label: "检查 2 · 佩戴检测", calibration: true },
-  { id: "check-fit-passed", image: "home-03-control.png", width: 375, height: 956, label: "检查 2 · 佩戴通过", calibration: true },
-  { id: "check-comfort", image: "home-03-control.png", width: 375, height: 956, label: "最佳档位测试", calibration: true, bestLevelTest: true },
-  { id: "check-comfort-found", image: "home-03-control.png", width: 375, height: 956, label: "最佳档位确认", calibration: true, bestLevelTest: true }
+  { id: "check-initiation", image: CONTROL_IMAGE, width: 375, height: 956, label: "检查 1 · 泌乳启动", calibration: true },
+  { id: "check-fit", image: CONTROL_IMAGE, width: 375, height: 956, label: "检查 2 · 佩戴检测", calibration: true },
+  { id: "check-fit-passed", image: CONTROL_IMAGE, width: 375, height: 956, label: "检查 2 · 佩戴通过", calibration: true },
+  { id: "check-comfort", image: CONTROL_IMAGE, width: 375, height: 956, label: "最佳档位测试", calibration: true, bestLevelTest: true },
+  { id: "check-comfort-found", image: CONTROL_IMAGE, width: 375, height: 956, label: "最佳档位确认", calibration: true, bestLevelTest: true }
 ];
 
 // Kept as an explicit rollback reference; the PNG assets remain unchanged.
@@ -19,18 +22,18 @@ const rollbackScreens0322 = {
 const hospitalScreens = [
   { id: "empty", image: "hospital-00-empty.png", width: 393, height: 852, label: "设备页空态" },
   { id: "manual", image: "hospital-01-manual.png", width: 375, height: 812, label: "手动添加设备" },
-  { id: "found", image: "hospital-02-found.png", width: 375, height: 812, label: "发现设备" },
-  { id: "scan", image: "hospital-03-scan.png", width: 375, height: 812, label: "扫描设备" },
+  { id: "found", image: "hospital-02-found-v043.png", width: 375, height: 812, label: "发现设备" },
+  { id: "scan", image: "hospital-03-scan-v043.png", width: 375, height: 812, label: "扫描设备" },
   { id: "code", image: "hospital-04-code.png", width: 415, height: 874, label: "输入验证码" },
   { id: "binding", image: "hospital-05-binding.png", width: 375, height: 812, label: "绑定中" },
   { id: "success", image: "hospital-06-success.png", width: 375, height: 812, label: "绑定成功" },
-  { id: "training-welcome", image: "home-00-welcome.png", width: 393, height: 852, label: "设备教学欢迎页" },
-  { id: "training-guide", image: "home-01-guide.png", width: 393, height: 852, label: "设备教学详情页" },
-  { id: "training-guide-final", image: "home-01b-guide-final.png", width: 393, height: 852, label: "设备教学最后一页" },
-  { id: "training-ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备教学完成页" },
-  { id: "pump-control", image: "home-03-control.png", width: 375, height: 956, label: "吸乳器控制页" },
+  { id: "training-welcome", image: "home-00-welcome-v043.png", width: 393, height: 852, label: "设备教学欢迎页" },
+  { id: "training-guide", image: "home-01-guide-v043.png", width: 393, height: 852, label: "设备教学详情页" },
+  { id: "training-guide-final", image: "home-01b-guide-final-v043.png", width: 393, height: 852, label: "设备教学最后一页" },
+  { id: "training-ready", image: "home-02-ready-v043.png", width: 393, height: 852, label: "设备教学完成页" },
+  { id: "pump-control", image: CONTROL_IMAGE, width: 375, height: 956, label: "吸乳器控制页" },
   ...calibrationScreens,
-  { id: "pump-running", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
+  { id: "pump-running", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
   { id: "pump-finished", image: "home-05-finished.png", width: 402, height: 874, label: "记录奶量" },
   { id: "pump-logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
   { id: "pump-dashboard", view: "insights-home", width: 402, height: 1180, label: "AI 吸乳子首页" },
@@ -45,10 +48,11 @@ const homeScreens = [
   { id: "connect-connecting", image: "home-connect-00-empty.png", width: 393, height: 852, label: "正在连接 V4" },
   { id: "connect-done", image: "home-connect-00-empty.png", width: 393, height: 852, label: "V4 连接完成" },
   { id: "connect-device", image: "home-connect-04-added-v036.png", width: 393, height: 852, label: "设备已添加" },
-  { id: "welcome", image: "home-00-welcome.png", width: 393, height: 852, label: "设备助手欢迎页" },
-  { id: "guide", image: "home-01-guide.png", width: 393, height: 852, label: "设备助手教学页" },
-  { id: "ready", image: "home-02-ready.png", width: 393, height: 852, label: "设备助手完成页" },
-  { id: "control", image: "home-03-control.png", width: 375, height: 956, label: "吸乳控制初始状态" },
+  { id: "welcome", image: "home-00-welcome-v043.png", width: 393, height: 852, label: "设备助手欢迎页" },
+  { id: "guide", image: "home-01-guide-v043.png", width: 393, height: 852, label: "设备助手教学页" },
+  { id: "guide-final", image: "home-01b-guide-final-v043.png", width: 393, height: 852, label: "设备助手教学最后一页" },
+  { id: "ready", image: "home-02-ready-v043.png", width: 393, height: 852, label: "设备助手完成页" },
+  { id: "control", image: CONTROL_IMAGE, width: 375, height: 956, label: "吸乳控制初始状态" },
   { id: "mode-list", custom: true, width: 402, height: 874, label: "模式列表" },
   { id: "mode-rhythm", custom: true, width: 402, height: 874, label: "韵律选择弹窗" },
   { id: "mode-name", custom: true, width: 402, height: 874, label: "新模式命名" },
@@ -57,7 +61,7 @@ const homeScreens = [
   { id: "mode-overview-complete", custom: true, width: 402, height: 874, label: "完整模式预览" },
   { id: "mode-introduction", custom: true, width: 402, height: 874, label: "模式介绍弹窗" },
   ...calibrationScreens,
-  { id: "pumping", image: "home-04-pumping.png", width: 375, height: 956, label: "吸乳中" },
+  { id: "pumping", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
   { id: "finished", image: "home-05-finished.png", width: 402, height: 874, label: "完成吸乳" },
   { id: "logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
   { id: "dashboard", view: "insights-home", width: 402, height: 1180, label: "AI 吸乳子首页" },
@@ -222,6 +226,7 @@ function trainingGuideHotspots(kind, final = false) {
     hotspot("guide-open-fullscreen", "全屏查看教学视频", 86.0, 26.0, 11.0, 7.0),
     hotspot("guide-show-how", "展开 How to do it", 4.0, 65.0, 92.0, 7.0),
     hotspot("guide-show-warning", "展开 What to watch out for", 4.0, 72.0, 92.0, 7.0),
+    final ? hotspot("ready-open-assistant", "打开 Cozy Assistant", 85.0, 7.4, 12.0, 6.0, `data-kind="${kind}"`) : "",
     final ? "" : hotspot(`${prefix}-prev`, "上一步", 4.2, 89.5, 30.2, 6.7),
     hotspot(`${prefix}-next`, final ? "完成设备设置" : "下一步", final ? 4.1 : 37.6, 89.5, final ? 91.8 : 58.4, 6.8)
   ].join("");
@@ -284,7 +289,7 @@ function hospitalHotspots(screen) {
       hotspot("unsupported-device", "查看 MeggO", 4.2, 62.3, 28.6, 13.7, 'data-device="MeggO"')
     ].join("");
     case "found": return hotspot("hospital-next", "扫描添加设备", 6.4, 86.9, 87.2, 6.1);
-    case "scan": return `${hotspot("toggle-flashlight", state.flashlightOn ? "关闭闪光灯" : "打开闪光灯", 41.5, 51.2, 17.0, 8.2)}${hotspot("hospital-next", "使用其他连接方式", 7.5, 86.9, 85.0, 6.2)}`;
+    case "scan": return `${hotspot("toggle-flashlight", state.flashlightOn ? "关闭闪光灯" : "打开闪光灯", 41.5, 51.2, 17.0, 8.2)}${hotspot("hospital-next", "下一步", 7.5, 86.9, 85.0, 6.2)}`;
     case "code":
       return [
         codeKeypadHotspots(),
@@ -341,6 +346,7 @@ function homeHotspots(screen) {
         hotspot("home-next", "开始设备教学", 6.0, 87.5, 88.0, 6.0)
       ].join("");
     case "guide": return trainingGuideHotspots("home");
+    case "guide-final": return trainingGuideHotspots("home", true);
     case "ready": return readyHotspots("home");
     case "control": return controlHotspots("home");
     case "pumping":
@@ -384,7 +390,7 @@ function connectionMarkup(screen) {
 }
 
 function guideExperienceMarkup(screen) {
-  if (!["training-guide", "training-guide-final", "guide"].includes(screen.id)) return "";
+  if (!["training-guide", "training-guide-final", "guide", "guide-final"].includes(screen.id)) return "";
   const playback = state.guideVideoPlaying
     ? `<span class="guide-playback-state playing">${icon("pause", "视频播放中")}<small>Playing</small></span>`
     : "";
@@ -416,7 +422,10 @@ function calibrationStepper(screenId) {
     "check-fit-passed": ["complete", "complete"]
   };
   const states = statesByScreen[screenId];
-  if (!states) return `<div class="best-level-kicker">${icon("sparkles", "最佳档位")}<span>Optional · Best level test</span></div>`;
+  if (!states) {
+    const found = screenId === "check-comfort-found";
+    return `<div class="best-level-kicker ${found ? "is-set" : ""}"><span>Optional · ${found ? "Best level set" : "Best level test"}</span></div>`;
+  }
   const labels = ["Initiation", "Fit check"];
   const track = states.map((status, index) => {
     const step = `<span class="check-step ${status}" aria-current="${status === "current" ? "step" : "false"}">${index + 1}</span>`;
@@ -450,7 +459,6 @@ function calibrationBody(screen) {
           <div class="fit-card passed"><strong>L</strong><span>Good fit</span></div>
           <div class="fit-card passed"><strong>R</strong><span>Good fit</span></div>
         </div>
-        <div class="next-check-card ready"><span>Ready to pump</span><strong>Both pumps are fitted and ready to start.</strong></div>
       </div>`;
     case "check-comfort":
       return `<div class="check-body comfort-body">
@@ -475,7 +483,7 @@ function calibrationFooter(screen) {
     case "check-comfort":
       return `<button type="button" class="check-primary-action" data-action="calibration-next">Confirm this level</button><button type="button" class="check-text-action" data-action="calibration-close">Exit setup</button>`;
     case "check-comfort-found":
-      return `<button type="button" class="check-text-action" data-action="calibration-test-again">Test again</button><button type="button" class="check-primary-action" data-action="calibration-use-level">Use this level</button>`;
+      return `<button type="button" class="check-text-action" data-action="calibration-test-again">Test again</button><button type="button" class="check-primary-action" data-action="calibration-use-level">Return to control</button>`;
     default:
       return "";
   }
@@ -818,12 +826,15 @@ function controlSettingsMarkup(kind, screen) {
   const selector = showManualModes
     ? `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`
     : "";
+  const lactationHeader = showManualModes && state.controlMode === "Lactation"
+    ? `<div class="control-mode-copy" aria-live="polite"><div><strong>Lactation mode</strong><span>Switch ›</span></div><p>Steady suction for efficient milk expression.</p></div>`
+    : "";
   const bestLevelEntry = !pumping && showManualModes && state.controlMode === "Lactation"
-    ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位">${icon("sparkles", "最佳档位测试")}<span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
+    ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位"><span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
     : "";
   const frequencies = [1, 2, 3, 4, 5].map(value => `<button type="button" class="${state.controlFrequency === value ? "active" : ""}" data-action="control-select-frequency" data-value="${value}" aria-pressed="${state.controlFrequency === value}">${value}</button>`).join("");
   const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" data-action="control-select-light" data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
-  return `${selector}
+  return `${lactationHeader}${selector}
     <span class="control-level-summary" aria-hidden="true">${state.pumpLevel}</span><span class="control-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 12</small></span>${bestLevelEntry}
     <span class="control-frequency-summary" aria-live="polite">${state.controlFrequency}</span><div class="control-frequency-selector" aria-label="Frequency">${frequencies}</div>
     <span class="control-light-summary" aria-live="polite">${state.controlLightOn ? escapeHtml(state.controlLight) : "Off"}</span>
@@ -852,10 +863,7 @@ function screenMarkup(kind) {
   const deviceOverlay = screen.image === "home-07-dashboard.png"
     ? `<span class="dashboard-device-frame" aria-hidden="true"><img src="./assets/figma-755/home-pump-control-device.png" width="182" height="138" alt="" draggable="false" /></span>`
     : "";
-  const pumpControlDevice = screen.image === "home-03-control.png"
-    ? `<span class="pump-control-device" aria-hidden="true"><img src="./assets/figma-755/home-pump-control-device.png" width="182" height="138" alt="" draggable="false" /></span>`
-    : "";
-  const pumpControlButtonMask = screen.image === "home-03-control.png"
+  const pumpControlButtonMask = screen.image === CONTROL_IMAGE
     ? `<span class="pump-control-native-button-mask" aria-hidden="true"></span>`
     : "";
   const customControlMode = kind === "home" && ["control", "pumping"].includes(screen.id) && state.customModeSaved
@@ -889,7 +897,6 @@ function screenMarkup(kind) {
       <div class="screen-canvas">
         <img class="figma-screen" src="./assets/figma-755/${screen.image}?v=${VERSION}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
         ${deviceOverlay}
-        ${pumpControlDevice}
         ${pumpControlButtonMask}
         ${customControlMode}
         ${controlSettings}
@@ -938,7 +945,7 @@ function prototypeNavigation(kind) {
       ]
     : [
         { label: "连接设备", icon: "link-2", start: 0, end: 4 },
-        { label: "使用教学", icon: "book-open", start: 5, end: 7 },
+        { label: "使用教学", icon: "book-open", start: 5, end: homeScreens.findIndex(screen => screen.id === "ready") },
         { label: "模式设置", icon: "sliders-horizontal", start: homeScreens.findIndex(screen => screen.id === "control"), end: homeScreens.findIndex(screen => screen.id === "mode-introduction") },
         { label: "吸乳与记录", icon: "activity", start: homeScreens.findIndex(screen => screen.id === "check-initiation"), end: homeScreens.length - 1 }
       ];
