@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.3";
+const VERSION = "0.4.4";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const CONTROL_IMAGE = "home-03-control-v043.png";
@@ -54,7 +54,7 @@ const homeScreens = [
   { id: "ready", image: "home-02-ready-v043.png", width: 393, height: 852, label: "设备助手完成页" },
   { id: "control", image: CONTROL_IMAGE, width: 375, height: 956, label: "吸乳控制初始状态" },
   { id: "mode-list", custom: true, width: 402, height: 874, label: "模式列表" },
-  { id: "mode-rhythm", custom: true, width: 402, height: 874, label: "韵律选择弹窗" },
+  { id: "mode-program-detail", custom: true, width: 375, height: 812, label: "韵律详情" },
   { id: "mode-name", custom: true, width: 402, height: 874, label: "新模式命名" },
   { id: "mode-overview", custom: true, width: 402, height: 874, label: "分段模式总览" },
   { id: "mode-editor", custom: true, width: 402, height: 874, label: "分段参数编辑" },
@@ -96,6 +96,7 @@ const defaults = {
   customModeSaved: false,
   selectedManualMode: "Stimulation",
   selectedManualRhythm: "Gentle",
+  activeProgramName: "Milk Boost Mode P1",
   modeEditingSection: 1,
   modeTrialPlaying: false,
   modeLightOn: true,
@@ -532,17 +533,20 @@ function modeProgramBar() {
 }
 
 function modeProgramCard(name, interactive) {
-  const action = interactive ? 'data-action="mode-use-preset"' : "";
-  return `<button type="button" class="mode-program-card" ${action} data-mode-name="${name}">
-    <div class="mode-program-heading"><span><strong>${name}</strong><small>45:00</small></span><b>Details ${icon("chevron-right", "查看详情")}</b></div>
-    <p>Gentle and convenient, designed for safely expressing milk on the go.</p>
-    ${modeProgramBar()}
-    <div class="mode-program-legend"><span class="stimulate">Stimulate</span><span class="rest">Rest</span><span class="mixing">Mixing</span></div>
-  </button>`;
+  const applyAction = interactive ? 'data-action="mode-use-preset"' : "";
+  const detailAction = interactive ? 'data-action="mode-open-program-detail"' : "";
+  return `<article class="mode-program-card" data-mode-name="${name}">
+    <div class="mode-program-heading"><span><strong>${name}</strong><small>45:00</small></span><button type="button" class="mode-program-details" ${detailAction} data-mode-name="${name}">Details ${icon("chevron-right", "查看详情")}</button></div>
+    <button type="button" class="mode-program-apply" ${applyAction} data-mode-name="${name}" aria-label="应用 ${name}">
+      <p>Gentle and convenient, designed for safely expressing milk on the go.</p>
+      ${modeProgramBar()}
+      <span class="mode-program-legend"><span class="stimulate">Stimulate</span><span class="rest">Rest</span><span class="mixing">Mixing</span></span>
+    </button>
+  </article>`;
 }
 
 function modeListContent(interactive = true) {
-  const manualAction = interactive ? 'data-action="mode-open-rhythm"' : "";
+  const manualAction = interactive ? 'data-action="mode-apply-manual"' : "";
   const createAction = interactive ? 'data-action="mode-start-create"' : "";
   const manualModes = [
     ["Stimulation", "Gentle and comfortable", "heart", "activity"],
@@ -564,6 +568,28 @@ function modeListContent(interactive = true) {
 
 function modeListScreen() {
   return `<section class="mode-screen mode-list-screen">${modeStatusBar()}<div class="mode-list-sheet"><header class="mode-list-header"><button type="button" data-action="screen-back" data-kind="home" aria-label="关闭模式列表">${icon("x", "关闭模式列表")}</button><h1>List</h1></header>${modeListContent()}</div></section>`;
+}
+
+function modeProgramDetailScreen() {
+  const programName = state.activeProgramName === "Milk Boost Mode P2" ? "Milk Boost Mode P2" : "Milk Boost Mode P1";
+  const sections = [
+    ["01", "Massage", "15min  I  Medium  I  Level 5", "massage"],
+    ["02", "Lactation", "15min  I  Medium  I  Level 13", "lactation"],
+    ["03", "Mixing1", "15min  I  Medium  I  Level 5", "mixing"],
+    ["04", "Mixing2", "15min  I  Medium  I  Level 13", "mixing-soft"],
+    ["05", "Massage", "15min  I  Medium  I  Level 5", "massage"],
+    ["06", "Lactation", "15min  I  Medium  I  Level 13", "lactation"]
+  ];
+  return `<section class="mode-screen mode-program-detail-screen">
+    ${modeHeader(programName)}
+    <div class="mode-program-detail-content">
+      <section class="mode-program-detail-summary"><strong>${programName}</strong><p>Gentle and convenient, designed for safely expressing milk on the go.</p></section>
+      <h2>Sequential execution</h2>
+      <div class="mode-program-timeline">
+        ${sections.map(([number, title, meta, type]) => `<article class="mode-program-step ${type}"><i aria-hidden="true"></i><span class="mode-program-step-title"><b>${number}</b><strong>${title}</strong></span><small>${meta}</small></article>`).join("")}
+      </div>
+    </div>
+  </section>`;
 }
 
 function modeRhythmOptions() {
@@ -661,7 +687,8 @@ function modeIntroductionScreen() {
 
 function customModeScreenMarkup(screen) {
   const content = screen.id === "mode-list" ? modeListScreen()
-    : screen.id === "mode-rhythm" ? modeRhythmScreen()
+    : screen.id === "mode-program-detail" ? modeProgramDetailScreen()
+      : screen.id === "mode-rhythm" ? modeRhythmScreen()
       : screen.id === "mode-name" ? modeNameScreen()
       : screen.id === "mode-overview" ? modeOverviewScreen(false)
         : screen.id === "mode-editor" ? modeEditorScreen()
@@ -1198,11 +1225,24 @@ function handleAction(action, target) {
     case "home-training-exit": goToPreviousScreen("home"); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
     case "home-mode-list": controlOverlay = ""; setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-list") }); break;
-    case "mode-open-rhythm": setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === "mode-rhythm"),
-      selectedManualMode: target.dataset.modeName || "Stimulation",
-      selectedManualRhythm: target.dataset.modeName === "Stimulation" ? "Gentle" : "Intense"
-    }); break;
+    case "mode-apply-manual": {
+      const modeName = target.dataset.modeName || "Stimulation";
+      setState({
+        homeStep: homeScreens.findIndex(screen => screen.id === "control"),
+        selectedManualMode: modeName,
+        customModeName: modeName,
+        customModeSaved: false,
+        controlMode: modeName
+      }, `${modeName} 模式已应用`);
+      break;
+    }
+    case "mode-open-program-detail":
+      setState({
+        homeStep: homeScreens.findIndex(screen => screen.id === "mode-program-detail"),
+        activeProgramName: target.dataset.modeName === "Milk Boost Mode P2" ? "Milk Boost Mode P2" : "Milk Boost Mode P1"
+      });
+      requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+      break;
     case "mode-rhythm-close": goToPreviousScreen("home"); break;
     case "mode-select-rhythm": setState({ selectedManualRhythm: target.dataset.value || "Gentle" }); break;
     case "mode-apply-rhythm": setState({

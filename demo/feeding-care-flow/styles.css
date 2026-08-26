@@ -270,9 +270,10 @@ button:disabled { cursor: default; opacity: .35; }
 .mode-program-heading > span { min-width: 0; display: flex; align-items: center; gap: 7px; }
 .mode-program-heading strong { overflow: hidden; font-size: 16px; font-weight: 500; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
 .mode-program-heading small { flex: 0 0 auto; padding: 3px 8px; border: 1px solid #eadde1; border-radius: 10px; color: #753044; font-size: 12px; font-weight: 500; line-height: 18px; }
-.mode-program-heading b { display: flex; align-items: center; flex: 0 0 auto; gap: 3px; color: #d7758b; font-size: 12px; font-weight: 550; }
-.mode-program-heading b svg { width: 15px; height: 15px; }
-.mode-program-card > p { margin: 9px 0 11px; color: #68686b; font-size: 13px; line-height: 18px; }
+.mode-program-details { height: 34px; display: flex; align-items: center; flex: 0 0 auto; gap: 3px; margin-right: -5px; padding: 0 5px; border: 0; color: #d7758b; background: transparent; font-size: 12px; font-weight: 550; }
+.mode-program-details svg { width: 15px; height: 15px; }
+.mode-program-apply { width: 100%; display: block; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }
+.mode-program-apply > p { margin: 9px 0 11px; color: #68686b; font-size: 13px; line-height: 18px; }
 .mode-program-bar { height: 10px; display: flex; gap: 1px; overflow: hidden; border-radius: 999px; }
 .mode-program-bar i { min-width: 8px; flex: 1; background: #d17b8b; }
 .mode-program-bar i.rest { background: #acc8e5; }
@@ -281,6 +282,28 @@ button:disabled { cursor: default; opacity: .35; }
 .mode-program-legend span::before { width: 6px; height: 6px; display: inline-block; margin-right: 5px; border-radius: 50%; background: #d17b8b; content: ""; vertical-align: 1px; }
 .mode-program-legend span.rest::before { background: #acc8e5; }
 .mode-program-legend span.mixing::before { background: #f2b49c; }
+.mode-program-detail-screen { background: linear-gradient(180deg, #fff 0, #f5f5f5 406px); }
+.mode-program-detail-screen .mode-statusbar, .mode-program-detail-screen .mode-header { background: transparent; }
+.mode-program-detail-content { padding: 12px 16px 24px; }
+.mode-program-detail-summary { min-height: 112px; display: flex; flex-direction: column; justify-content: center; padding: 20px 16px; border-radius: 16px; background: #fff; }
+.mode-program-detail-summary strong { color: #1f1f20; font-size: 16px; font-weight: 650; line-height: 21px; }
+.mode-program-detail-summary p { max-width: 307px; margin: 12px 0 0; color: #63666a; font-size: 13px; line-height: 18px; text-transform: capitalize; }
+.mode-program-detail-content > h2 { margin: 25px 4px 16px; color: #3c3d40; font-size: 16px; font-weight: 510; letter-spacing: 0; line-height: 21px; }
+.mode-program-timeline { position: relative; display: grid; gap: 16px; padding: 0 1px 0 16px; }
+.mode-program-timeline::before { position: absolute; top: 36px; bottom: 28px; left: 0; border-left: 1px dashed #d3d7da; content: ""; }
+.mode-program-step { position: relative; height: 72px; display: grid; grid-template-columns: 96px minmax(0,1fr); align-items: center; padding: 0 16px 0 36px; border-radius: 12px; background: #fff; }
+.mode-program-step::before { position: absolute; top: 30px; left: -21px; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 50%; background: #cbd0d3; box-shadow: 0 2px 5px rgba(45,49,52,.22); content: ""; }
+.mode-program-step > i { position: absolute; top: 18px; bottom: 18px; left: 16px; width: 4px; background: #d27b90; }
+.mode-program-step-title { display: grid; gap: 1px; }
+.mode-program-step-title b { color: #d27b90; font-size: 24px; font-style: italic; font-weight: 750; letter-spacing: .96px; line-height: 24px; }
+.mode-program-step-title strong { color: #3c3d40; font-size: 16px; font-style: italic; font-weight: 750; line-height: 18px; }
+.mode-program-step small { color: #63666a; font-size: 12px; line-height: 16px; text-align: right; white-space: nowrap; }
+.mode-program-step.lactation > i { background: #e1cacb; }
+.mode-program-step.lactation .mode-program-step-title b { color: #e1cacb; }
+.mode-program-step.mixing > i { background: #f2ad90; }
+.mode-program-step.mixing .mode-program-step-title b { color: #f2ad90; }
+.mode-program-step.mixing-soft > i { background: #f5d8cc; }
+.mode-program-step.mixing-soft .mode-program-step-title b { color: #f2ad90; opacity: .5; }
 .mode-list-background, .mode-editor-background { position: absolute; inset: 0; filter: blur(1.5px); transform: scale(1.01); }
 .mode-name-shade, .mode-intro-shade { position: absolute; z-index: 2; inset: 0; background: rgba(32,27,30,.6); animation: mode-shade-in 220ms ease both; }
 .mode-rhythm-shade { position: absolute; z-index: 4; inset: 0; background: rgba(39,31,34,.55); animation: mode-shade-in 220ms ease both; }
