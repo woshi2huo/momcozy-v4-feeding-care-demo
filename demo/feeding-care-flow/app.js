@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.5";
+const VERSION = "0.4.6";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const CONTROL_IMAGE = "home-03-control-v043.png";
@@ -909,14 +909,11 @@ function controlSettingsMarkup(kind, screen) {
   const selector = showManualModes
     ? `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`
     : "";
-  const lactationHeader = showManualModes && state.controlMode === "Lactation"
-    ? `<div class="control-mode-copy" aria-live="polite"><div><strong>Lactation mode</strong><span>Switch ›</span></div><p>Steady suction for efficient milk expression.</p></div>`
-    : "";
   const bestLevelEntry = !pumping && showManualModes && state.controlMode === "Lactation"
     ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位"><span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
     : "";
   const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" data-action="control-select-light" data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
-  return `${lactationHeader}${selector}
+  return `${selector}
     <span class="control-level-summary" aria-hidden="true">${state.pumpLevel}</span><span class="control-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 15</small></span>${bestLevelEntry}
     <span class="control-secondary-settings-mask" aria-hidden="true"></span><span class="control-light-card-bg" aria-hidden="true"></span><strong class="control-light-label">Light</strong>
     <span class="control-light-summary" aria-live="polite">${state.controlLightOn ? escapeHtml(state.controlLight) : "Off"}</span>

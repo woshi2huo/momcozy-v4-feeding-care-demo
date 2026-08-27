@@ -114,11 +114,6 @@ button:disabled { cursor: default; opacity: .35; }
 .custom-control-mode-card > div:last-child { height: 8px; display: flex; gap: 2px; overflow: hidden; border-radius: 999px; background: #f2e1e6; }
 .custom-control-mode-card > div:last-child i:first-child { width: var(--segment); background: #c48692; }
 .custom-control-mode-card > div:last-child i:last-child { flex: 1; background: #f2b8a4; }
-.control-mode-copy { position: absolute; z-index: 5; left: 8.53%; top: 31.58%; width: 82.93%; height: 6.8%; color: #1f1f20; background: #fff; pointer-events: none; }
-.control-mode-copy > div { height: 21px; display: flex; align-items: center; justify-content: space-between; }
-.control-mode-copy strong { font-size: 16px; line-height: 1.3; font-weight: 650; }
-.control-mode-copy span { color: #d27b90; font-size: 12px; }
-.control-mode-copy p { margin: 8px 0 0; color: #979797; font-size: 13px; line-height: 1.4; }
 .control-mode-selector { position: absolute; z-index: 5; left: 8.5%; top: 39.75%; width: 83%; height: 7.6%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #fff; }
 .control-mode-selector button { min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: 0; border: 0; color: #989095; background: #fff; font-size: 10px; }
 .control-mode-selector button > span { width: 41px; height: 41px; display: grid; place-items: center; border-radius: 7px; color: #d77991; background: #f8eff1; }

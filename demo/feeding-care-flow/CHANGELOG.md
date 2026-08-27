@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.6 - 2026-08-27
+
+- 修正 Standard mode 的信息层级：切换 Stimulation、Lactation、Mixed 或 Milk initiation 时，顶部标题和说明保持 `Standard mode`，不再改写为具体子模式名称。
+- Lactation 仍保留图标选中态和 `Best level test` 入口；院端、居家端及吸乳中共用逻辑同步生效。
+
 ## 0.4.5 - 2026-08-27
 
 - 将已确认的新版吸乳洞察页面同步到院端和居家端：Daily summary 保留唯一 CozyAI 主入口，Pumping Trend 与 Lactation 只显示 `Key insight + More`。
