@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.7";
+const VERSION = "0.4.8";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -21,6 +21,16 @@ const rollbackScreens0322 = {
   device: { image: "home-08-device.png", width: 393, height: 852 }
 };
 
+const customModeScreens = [
+  { id: "mode-list", custom: true, width: 402, height: 874, label: "模式列表" },
+  { id: "mode-program-detail", custom: true, width: 375, height: 812, label: "韵律详情" },
+  { id: "mode-name", custom: true, width: 402, height: 874, label: "新模式命名" },
+  { id: "mode-overview", custom: true, width: 402, height: 874, label: "分段模式总览" },
+  { id: "mode-editor", custom: true, width: 402, height: 874, label: "分段参数编辑" },
+  { id: "mode-overview-complete", custom: true, width: 402, height: 874, label: "完整模式预览" },
+  { id: "mode-introduction", custom: true, width: 402, height: 874, label: "模式介绍弹窗" }
+];
+
 const hospitalScreens = [
   { id: "empty", image: "hospital-00-empty.png", width: 393, height: 852, label: "设备页空态" },
   { id: "manual", image: "hospital-01-manual.png", width: 375, height: 812, label: "手动添加设备" },
@@ -34,6 +44,7 @@ const hospitalScreens = [
   { id: "training-guide-final", image: "home-01b-guide-final-v043.png", width: 393, height: 852, label: "设备教学最后一页" },
   { id: "training-ready", image: "home-02-ready-v043.png", width: 393, height: 852, label: "设备教学完成页" },
   { id: "pump-control", image: CONTROL_IMAGE, width: 375, height: 956, label: "吸乳器控制页" },
+  ...customModeScreens,
   ...calibrationScreens,
   { id: "pump-running", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
   { id: "pump-finished", image: "home-05-finished.png", width: 402, height: 874, label: "记录奶量" },
@@ -56,13 +67,7 @@ const homeScreens = [
   { id: "guide-final", image: "home-01b-guide-final-v043.png", width: 393, height: 852, label: "设备助手教学最后一页" },
   { id: "ready", image: "home-02-ready-v043.png", width: 393, height: 852, label: "设备助手完成页" },
   { id: "control", image: CONTROL_IMAGE, width: 375, height: 956, label: "吸乳控制初始状态" },
-  { id: "mode-list", custom: true, width: 402, height: 874, label: "模式列表" },
-  { id: "mode-program-detail", custom: true, width: 375, height: 812, label: "韵律详情" },
-  { id: "mode-name", custom: true, width: 402, height: 874, label: "新模式命名" },
-  { id: "mode-overview", custom: true, width: 402, height: 874, label: "分段模式总览" },
-  { id: "mode-editor", custom: true, width: 402, height: 874, label: "分段参数编辑" },
-  { id: "mode-overview-complete", custom: true, width: 402, height: 874, label: "完整模式预览" },
-  { id: "mode-introduction", custom: true, width: 402, height: 874, label: "模式介绍弹窗" },
+  ...customModeScreens,
   ...calibrationScreens,
   { id: "pumping", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
   { id: "finished", image: "home-05-finished.png", width: 402, height: 874, label: "完成吸乳" },
@@ -321,7 +326,7 @@ function codeKeypadHotspots() {
   return `${keys.map(([value, x, y]) => hotspot("enter-code", `输入数字 ${value}`, x, y, 29.2, 5.9, `data-value="${value}"`)).join("")}${hotspot("delete-code", "删除验证码", 69.5, 84.6, 22.0, 5.9)}`;
 }
 
-function controlHotspots(kind, modeAction = kind === "home" ? "home-mode-list" : "control-open-mode") {
+function controlHotspots(kind, modeAction = "control-open-mode-list") {
   return [
     hotspot("control-open-help", "打开吸乳帮助", 73.0, 4.3, 11.0, 5.7),
     hotspot("control-open-settings", "打开吸乳器设置", 85.0, 4.3, 11.0, 5.7),
@@ -585,7 +590,7 @@ function modeStatusBar() {
 
 function modeHeader(title, options = {}) {
   const backAction = options.backAction || "screen-back";
-  const backKind = backAction === "screen-back" ? 'data-kind="home"' : "";
+  const backKind = backAction === "screen-back" ? `data-kind="${ENTRY}"` : "";
   const help = options.help
     ? `<button type="button" class="mode-header-action" data-action="mode-open-introduction" aria-label="查看模式介绍">${icon("circle-help", "查看模式介绍")}</button>`
     : "";
@@ -635,7 +640,7 @@ function modeListContent(interactive = true) {
 }
 
 function modeListScreen() {
-  return `<section class="mode-screen mode-list-screen">${modeStatusBar()}<div class="mode-list-sheet"><header class="mode-list-header"><button type="button" data-action="screen-back" data-kind="home" aria-label="关闭模式列表">${icon("x", "关闭模式列表")}</button><h1>List</h1></header>${modeListContent()}</div></section>`;
+  return `<section class="mode-screen mode-list-screen">${modeStatusBar()}<div class="mode-list-sheet"><header class="mode-list-header"><button type="button" data-action="screen-back" data-kind="${ENTRY}" aria-label="关闭模式列表">${icon("x", "关闭模式列表")}</button><h1>List</h1></header>${modeListContent()}</div></section>`;
 }
 
 function modeProgramDetailScreen() {
@@ -688,7 +693,7 @@ function modeNameScreen() {
     <div class="mode-list-background">${modeListScreen()}</div>
     <div class="mode-name-shade" aria-hidden="true"></div>
     <div class="mode-name-sheet" role="dialog" aria-modal="true" aria-label="New Mode">
-      <div class="mode-name-title"><button type="button" data-action="screen-back" data-kind="home">Cancel</button><strong>New Mode</strong><span></span></div>
+      <div class="mode-name-title"><button type="button" data-action="screen-back" data-kind="${ENTRY}">Cancel</button><strong>New Mode</strong><span></span></div>
       <label><span>Mode name</span><input type="text" data-mode-name-input maxlength="28" value="${escapeHtml(state.customModeName)}" placeholder="Please enter the mode name" /></label>
       <label><span>Description</span><textarea data-mode-description-input maxlength="80" placeholder="Describe how you want to use this mode">${escapeHtml(state.customModeDescription)}</textarea></label>
       <button type="button" class="mode-primary" data-action="mode-save-name">Save</button>
@@ -952,7 +957,7 @@ function controlOverlayMarkup(kind, screen) {
     footerLabel = kind === "hospital" ? "Close" : "Manage modes";
   }
 
-  const footerAction = controlOverlay === "mode" && kind === "home" ? "home-mode-list" : "control-close-overlay";
+  const footerAction = controlOverlay === "mode" && kind === "home" ? "control-open-mode-list" : "control-close-overlay";
   return `<button type="button" class="control-overlay-shade" data-action="control-close-overlay" aria-label="关闭${titles[controlOverlay]}"></button>
     <section class="control-overlay-sheet ${controlOverlay}" role="dialog" aria-modal="true" aria-label="${titles[controlOverlay]}">
       <header><h2>${titles[controlOverlay]}</h2><button type="button" data-action="control-close-overlay" aria-label="关闭">${icon("x", "关闭")}</button></header>
@@ -991,7 +996,7 @@ function screenMarkup(kind) {
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
   const screen = screens[step];
   if (screen.view) return experienceScreenMarkup(kind, screen);
-  if (kind === "home" && screen.custom) return customModeScreenMarkup(screen);
+  if (screen.custom) return customModeScreenMarkup(screen);
   const pageHotspots = kind === "hospital" ? hospitalHotspots(screen) : homeHotspots(screen);
   const hotspots = `${screenBackHotspot(kind, screen)}${pageHotspots}`;
   const digit = screen.id === "code" && state.codeDigit
@@ -1083,7 +1088,8 @@ function prototypeNavigation(kind) {
     ? [
         { label: "设备连接", icon: "link-2", start: 0, end: 6 },
         { label: "设备教学", icon: "book-open", start: 7, end: 10 },
-        { label: "吸乳与记录", icon: "activity", start: 11, end: hospitalScreens.length - 1 }
+        { label: "模式设置", icon: "sliders-horizontal", start: hospitalScreens.findIndex(screen => screen.id === "pump-control"), end: hospitalScreens.findIndex(screen => screen.id === "mode-introduction") },
+        { label: "吸乳与记录", icon: "activity", start: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), end: hospitalScreens.length - 1 }
       ]
     : [
         { label: "连接设备", icon: "link-2", start: 0, end: 4 },
@@ -1215,6 +1221,17 @@ function updateModeSection(patch) {
   const index = Math.max(0, Math.min(1, state.modeEditingSection - 1));
   const sections = state.customModeSections.map((section, sectionIndex) => sectionIndex === index ? { ...section, ...patch } : section);
   setState({ customModeSections: sections });
+}
+
+function modeFlowContext() {
+  const kind = ENTRY === "hospital" ? "hospital" : "home";
+  const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+  return { kind, screens, stepKey: `${kind}Step`, controlId: kind === "hospital" ? "pump-control" : "control" };
+}
+
+function modeStepPatch(screenId) {
+  const { screens, stepKey } = modeFlowContext();
+  return { [stepKey]: screens.findIndex(screen => screen.id === screenId) };
 }
 
 function cozyReplyFor(question, contextKey) {
@@ -1358,11 +1375,12 @@ function handleAction(action, target) {
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-training-exit": goToPreviousScreen("home"); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
-    case "home-mode-list": controlOverlay = ""; setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-list") }); break;
+    case "control-open-mode-list": controlOverlay = ""; setState(modeStepPatch("mode-list")); break;
     case "mode-apply-manual": {
       const modeName = target.dataset.modeName || "Stimulation";
+      const { controlId } = modeFlowContext();
       setState({
-        homeStep: homeScreens.findIndex(screen => screen.id === "control"),
+        ...modeStepPatch(controlId),
         selectedManualMode: modeName,
         customModeName: modeName,
         customModeSaved: false,
@@ -1372,38 +1390,46 @@ function handleAction(action, target) {
     }
     case "mode-open-program-detail":
       setState({
-        homeStep: homeScreens.findIndex(screen => screen.id === "mode-program-detail"),
+        ...modeStepPatch("mode-program-detail"),
         activeProgramName: target.dataset.modeName === "Milk Boost Mode P2" ? "Milk Boost Mode P2" : "Milk Boost Mode P1"
       });
       requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
       break;
-    case "mode-rhythm-close": goToPreviousScreen("home"); break;
+    case "mode-rhythm-close": goToPreviousScreen(modeFlowContext().kind); break;
     case "mode-select-rhythm": setState({ selectedManualRhythm: target.dataset.value || "Gentle" }); break;
-    case "mode-apply-rhythm": setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === "control"),
-      customModeName: state.selectedManualMode,
-      customModeSaved: false,
-      controlMode: state.selectedManualMode
-    }, `${state.selectedManualMode} · ${state.selectedManualRhythm} 已应用`); break;
-    case "mode-start-create": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-name"), customModeSaved: false }); break;
+    case "mode-apply-rhythm": {
+      const { controlId } = modeFlowContext();
+      setState({
+        ...modeStepPatch(controlId),
+        customModeName: state.selectedManualMode,
+        customModeSaved: false,
+        controlMode: state.selectedManualMode
+      }, `${state.selectedManualMode} · ${state.selectedManualRhythm} 已应用`);
+      break;
+    }
+    case "mode-start-create": setState({ ...modeStepPatch("mode-name"), customModeSaved: false }); break;
     case "mode-save-name": setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === "mode-overview"),
+      ...modeStepPatch("mode-overview"),
       customModeName: state.customModeName.trim() || "Milk Collection Mode-01",
       modeEditingSection: 1
     }, "新模式已创建"); break;
-    case "mode-use-preset": setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === "control"),
-      customModeName: target.dataset.modeName || "Stimulation",
-      customModeSaved: true,
-      controlMode: "Custom"
-    }, "模式已应用"); break;
+    case "mode-use-preset": {
+      const { controlId } = modeFlowContext();
+      setState({
+        ...modeStepPatch(controlId),
+        customModeName: target.dataset.modeName || "Stimulation",
+        customModeSaved: true,
+        controlMode: "Custom"
+      }, "模式已应用");
+      break;
+    }
     case "mode-edit-section": setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === "mode-editor"),
+      ...modeStepPatch("mode-editor"),
       modeEditingSection: Number(target.dataset.section) === 2 ? 2 : 1,
       modeTrialPlaying: false
     }); break;
     case "mode-add-section": setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === "mode-editor"),
+      ...modeStepPatch("mode-editor"),
       modeEditingSection: 2,
       modeTrialPlaying: false
     }); break;
@@ -1422,17 +1448,21 @@ function handleAction(action, target) {
     case "mode-toggle-light": setState({ modeLightOn: !state.modeLightOn }); break;
     case "mode-toggle-trial": setState({ modeTrialPlaying: !state.modeTrialPlaying }, state.modeTrialPlaying ? "试听已停止" : "正在试听当前参数"); break;
     case "mode-editor-next": setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === (state.modeEditingSection === 2 ? "mode-overview-complete" : "mode-overview")),
+      ...modeStepPatch(state.modeEditingSection === 2 ? "mode-overview-complete" : "mode-overview"),
       modeTrialPlaying: false
     }); break;
-    case "mode-open-introduction": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "mode-introduction") }); break;
-    case "mode-close-introduction": goToPreviousScreen("home"); break;
-    case "mode-save-to-control": setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === "control"),
-      customModeSaved: true,
-      controlMode: "Custom",
-      modeTrialPlaying: false
-    }, "自定义模式已保存并应用"); break;
+    case "mode-open-introduction": setState(modeStepPatch("mode-introduction")); break;
+    case "mode-close-introduction": goToPreviousScreen(modeFlowContext().kind); break;
+    case "mode-save-to-control": {
+      const { controlId } = modeFlowContext();
+      setState({
+        ...modeStepPatch(controlId),
+        customModeSaved: true,
+        controlMode: "Custom",
+        modeTrialPlaying: false
+      }, "自定义模式已保存并应用");
+      break;
+    }
     case "control-select-mode": setState({
       controlMode: target.dataset.value || "Stimulation",
       customModeSaved: false
