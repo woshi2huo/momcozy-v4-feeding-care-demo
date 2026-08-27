@@ -1,6 +1,8 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.6";
+const VERSION = "0.4.7";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
+const MAX_RECORDED_VOLUME = 300;
+const VOLUME_DRAG_STEP = 5;
 
 const CONTROL_IMAGE = "home-03-control-v043.png";
 const PUMPING_IMAGE = "home-04-pumping-v043.png";
@@ -120,6 +122,7 @@ let state = loadState();
 let transitionTimer = null;
 let holdTimer = null;
 let holdTarget = null;
+let activeVolumeSlider = null;
 let navigationOpen = false;
 let directNavigation = false;
 let controlOverlay = "";
@@ -134,6 +137,8 @@ function loadState() {
     const saved = { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
     saved.hospitalStep = Math.max(0, Math.min(hospitalScreens.length - 1, Number(saved.hospitalStep) || 0));
     saved.homeStep = Math.max(0, Math.min(homeScreens.length - 1, Number(saved.homeStep) || 0));
+    saved.leftVolume = clampRecordedVolume(saved.leftVolume);
+    saved.rightVolume = clampRecordedVolume(saved.rightVolume);
     return saved;
   } catch {
     return { ...defaults };
@@ -153,6 +158,66 @@ function setState(patch, message) {
   saveState();
   render();
   if (message) showToast(message);
+}
+
+function clampRecordedVolume(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(MAX_RECORDED_VOLUME, Math.round(numericValue)));
+}
+
+function volumeControlsMarkup() {
+  return [
+    ["left", "左侧", state.leftVolume],
+    ["right", "右侧", state.rightVolume]
+  ].map(([side, label, rawValue]) => {
+    const value = clampRecordedVolume(rawValue);
+    const progress = value / MAX_RECORDED_VOLUME;
+    return `<div class="volume-slider-region ${side}" style="--volume-progress:${progress};--volume-active:${value > 0 ? 1 : 0}">
+        <span class="volume-fill-feedback" aria-hidden="true"></span>
+        <input class="volume-slider" type="range" min="0" max="${MAX_RECORDED_VOLUME}" step="1" value="${value}" data-volume-slider data-volume-side="${side}" aria-label="滑动调整${label}奶量，当前 ${value} ml" />
+      </div>
+      <label class="volume-input-shell ${side}">
+        <span class="sr-only">输入${label}奶量</span>
+        <input class="volume-amount-input" type="number" inputmode="numeric" min="0" max="${MAX_RECORDED_VOLUME}" step="1" value="${value}" data-volume-input data-volume-side="${side}" aria-label="${label}奶量，单位毫升" />
+        <small>ml</small>
+      </label>`;
+  }).join("");
+}
+
+function syncVolumeControls(side, rawValue) {
+  const normalizedSide = side === "right" ? "right" : "left";
+  const value = clampRecordedVolume(rawValue);
+  const stateKey = normalizedSide === "right" ? "rightVolume" : "leftVolume";
+  state = { ...state, [stateKey]: value };
+  saveState();
+
+  document.querySelectorAll(`[data-volume-side="${normalizedSide}"]`).forEach((control) => {
+    control.value = String(value);
+    if (control.matches("[data-volume-slider]")) {
+      control.setAttribute("aria-label", `滑动调整${normalizedSide === "right" ? "右侧" : "左侧"}奶量，当前 ${value} ml`);
+    }
+  });
+  const region = document.querySelector(`.volume-slider-region.${normalizedSide}`);
+  if (!region) return;
+  region.style.setProperty("--volume-progress", String(value / MAX_RECORDED_VOLUME));
+  region.style.setProperty("--volume-active", value > 0 ? "1" : "0");
+  region.classList.remove("is-adjusting");
+  requestAnimationFrame(() => region.classList.add("is-adjusting"));
+  clearTimeout(region.adjustmentTimer);
+  region.adjustmentTimer = setTimeout(() => region.classList.remove("is-adjusting"), 180);
+}
+
+function updateVolumeFromPointer(slider, clientY) {
+  const bounds = slider.getBoundingClientRect();
+  if (!bounds.height) return;
+  const progress = 1 - Math.max(0, Math.min(1, (clientY - bounds.top) / bounds.height));
+  const value = Math.round((progress * MAX_RECORDED_VOLUME) / VOLUME_DRAG_STEP) * VOLUME_DRAG_STEP;
+  syncVolumeControls(slider.dataset.volumeSide, value);
+}
+
+function stopVolumeDrag() {
+  activeVolumeSlider = null;
 }
 
 function cancelHold() {
@@ -933,9 +998,7 @@ function screenMarkup(kind) {
     ? `<span class="code-digit" aria-hidden="true">${state.codeDigit}</span><span class="next-enabled" aria-hidden="true">Next</span>`
     : "";
   const sessionFinished = ["pump-finished", "finished"].includes(screen.id);
-  const volumes = sessionFinished
-    ? `<span class="volume-value left" aria-live="polite">${state.leftVolume}<small>ml</small></span><span class="volume-value right" aria-live="polite">${state.rightVolume}<small>ml</small></span>`
-    : "";
+  const volumes = sessionFinished ? volumeControlsMarkup() : "";
   const durationValue = sessionFinished
     ? `<span class="session-duration-value" aria-live="polite">${escapeHtml(state.sessionDuration)}</span>`
     : "";
@@ -1495,12 +1558,29 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("input", (event) => {
+  const volumeControl = event.target.closest("[data-volume-slider], [data-volume-input]");
+  if (volumeControl) {
+    if (volumeControl.matches("[data-volume-input]") && volumeControl.value === "") return;
+    syncVolumeControls(volumeControl.dataset.volumeSide, volumeControl.value);
+    return;
+  }
   if (!event.target.matches("[data-mode-name-input], [data-mode-description-input]")) return;
   const patch = event.target.matches("[data-mode-name-input]")
     ? { customModeName: event.target.value }
     : { customModeDescription: event.target.value };
   state = { ...state, ...patch };
   saveState();
+});
+
+document.addEventListener("change", (event) => {
+  const input = event.target.closest("[data-volume-input]");
+  if (!input) return;
+  syncVolumeControls(input.dataset.volumeSide, input.value === "" ? 0 : input.value);
+});
+
+document.addEventListener("focusin", (event) => {
+  const input = event.target.closest("[data-volume-input]");
+  if (input) input.select();
 });
 
 document.addEventListener("submit", (event) => {
@@ -1512,15 +1592,27 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("pointerdown", (event) => {
+  const volumeSlider = event.target.closest("[data-volume-slider]");
+  if (volumeSlider) {
+    event.preventDefault();
+    activeVolumeSlider = volumeSlider;
+    volumeSlider.focus({ preventScroll: true });
+    volumeSlider.setPointerCapture?.(event.pointerId);
+    updateVolumeFromPointer(volumeSlider, event.clientY);
+    return;
+  }
   const target = event.target.closest("[data-hold-action]");
   if (!target) return;
   target.setPointerCapture?.(event.pointerId);
   startHold(target);
 });
 
-document.addEventListener("pointerup", cancelHold);
-document.addEventListener("pointercancel", cancelHold);
-document.addEventListener("lostpointercapture", cancelHold);
+document.addEventListener("pointermove", (event) => {
+  if (activeVolumeSlider) updateVolumeFromPointer(activeVolumeSlider, event.clientY);
+});
+document.addEventListener("pointerup", () => { stopVolumeDrag(); cancelHold(); });
+document.addEventListener("pointercancel", () => { stopVolumeDrag(); cancelHold(); });
+document.addEventListener("lostpointercapture", () => { stopVolumeDrag(); cancelHold(); });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && (guideFullscreen || durationPickerOpen)) {
@@ -1532,6 +1624,19 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && controlOverlay) {
     controlOverlay = "";
     render();
+    return;
+  }
+  const volumeInput = event.target.closest("[data-volume-input]");
+  if (volumeInput) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      syncVolumeControls(volumeInput.dataset.volumeSide, volumeInput.value === "" ? 0 : volumeInput.value);
+      volumeInput.blur();
+    } else if (event.key === "Escape") {
+      const stateKey = volumeInput.dataset.volumeSide === "right" ? "rightVolume" : "leftVolume";
+      volumeInput.value = String(state[stateKey]);
+      volumeInput.blur();
+    }
     return;
   }
   const target = event.target.closest("[data-hold-action]");

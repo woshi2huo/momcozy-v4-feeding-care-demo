@@ -83,10 +83,23 @@ button:disabled { cursor: default; opacity: .35; }
 .hotspot:focus-visible { outline: 3px solid #1570ef; outline-offset: 2px; background: rgba(21,112,239,.08); }
 .code-digit { position: absolute; left: 72.2%; top: 27.7%; width: 19.3%; height: 6.8%; display: grid; place-items: center; color: #202026; background: #fff; border: 1px solid #202026; border-radius: 15px; font-size: 27px; }
 .next-enabled { position: absolute; left: 8.4%; top: 55%; width: 83.2%; height: 5.9%; display: grid; place-items: center; border-radius: 999px; color: #fff; background: var(--accent); font-size: 16px; font-weight: 600; pointer-events: none; }
-.volume-value { position: absolute; top: 71.4%; width: 32.6%; height: 5.3%; display: flex; align-items: center; justify-content: center; gap: 3px; border-radius: 999px; color: #8f858b; background: #fff; font-family: Georgia, serif; font-size: 31px; pointer-events: none; }
-.volume-value.left { left: 8.2%; }
-.volume-value.right { left: 59.5%; }
-.volume-value small { align-self: flex-end; margin-bottom: 10px; font-family: Inter, ui-sans-serif, sans-serif; font-size: 12px; }
+.volume-slider-region { position: absolute; z-index: 3; top: 50.15%; width: 32.8%; height: 17.25%; overflow: hidden; border-radius: 50%; --volume-progress: 0; --volume-active: 0; }
+.volume-slider-region.left { left: 8.15%; }
+.volume-slider-region.right { left: 59.35%; }
+.volume-fill-feedback { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; -webkit-mask: radial-gradient(circle 26px at 50% 91%, transparent 96%, #000 100%); mask: radial-gradient(circle 26px at 50% 91%, transparent 96%, #000 100%); }
+.volume-fill-feedback::before { position: absolute; inset: 0; content: ""; border-radius: inherit; background: linear-gradient(180deg, rgba(216,94,127,.08), rgba(151,0,43,.26)); transform: scaleY(var(--volume-progress)); transform-origin: bottom; transition: transform 100ms ease-out; }
+.volume-fill-feedback::after { position: absolute; right: 18%; bottom: calc(var(--volume-progress) * 100%); left: 18%; height: 2px; content: ""; border-radius: 999px; background: rgba(255,255,255,.72); box-shadow: 0 0 10px rgba(143,0,39,.18); opacity: var(--volume-active); transform: translateY(1px); transition: bottom 100ms ease-out, opacity 120ms ease; }
+.volume-slider { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ns-resize; touch-action: none; writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical; appearance: slider-vertical; }
+.volume-slider-region:focus-within { outline: 2px solid rgba(143,0,39,.18); outline-offset: -3px; }
+.volume-slider-region.is-adjusting .volume-fill-feedback { filter: saturate(1.08); }
+.volume-input-shell { position: absolute; z-index: 4; top: 71.4%; width: 32.6%; height: 5.3%; display: flex; align-items: center; justify-content: center; gap: 3px; border: 1px solid transparent; border-radius: 999px; color: #8f858b; background: #fff; transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+.volume-input-shell.left { left: 8.2%; }
+.volume-input-shell.right { left: 59.5%; }
+.volume-input-shell:focus-within { border-color: rgba(143,0,39,.28); box-shadow: 0 8px 24px rgba(143,0,39,.13); transform: translateY(-1px); }
+.volume-amount-input { width: 57px; min-width: 0; padding: 0; border: 0; outline: 0; color: #8f858b; background: transparent; font-family: Georgia, serif; font-size: 31px; line-height: 1; text-align: right; appearance: textfield; }
+.volume-amount-input::-webkit-inner-spin-button, .volume-amount-input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+.volume-input-shell small { align-self: flex-end; margin-bottom: 10px; font-family: Inter, ui-sans-serif, sans-serif; font-size: 12px; }
+.hotspot[data-action$="-left-up"], .hotspot[data-action$="-left-down"], .hotspot[data-action$="-right-up"], .hotspot[data-action$="-right-down"] { z-index: 5; }
 .session-duration-value { position: absolute; z-index: 3; left: 58.2%; top: 81.44%; width: 25.5%; height: 3.3%; display: grid; place-items: center end; color: #9c002f; background: #fff; font-size: 11px; font-weight: 650; pointer-events: none; }
 .scanner-flashlight-state { position: absolute; z-index: 4; top: 52.2%; left: 43.5%; width: 13%; height: 6.1%; display: grid; place-items: center; align-content: center; gap: 2px; border: 1px solid rgba(255,255,255,.8); border-radius: 50%; color: #fff; background: #8f0027; pointer-events: none; }
 .scanner-flashlight-state svg { width: 18px; height: 18px; }
