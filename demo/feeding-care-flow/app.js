@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.13";
+const VERSION = "0.4.14";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -660,7 +660,7 @@ function modeSwitchConfirmationMarkup() {
 }
 
 function modeListScreen() {
-  return `<section class="mode-screen mode-list-screen">${modeStatusBar()}<div class="mode-list-sheet" ${pendingModeSwitch ? "inert" : ""}><header class="mode-list-header"><button type="button" data-action="screen-back" data-kind="${ENTRY}" aria-label="关闭模式列表">${icon("x", "关闭模式列表")}</button><h1>List</h1></header>${modeListContent()}</div>${modeSwitchConfirmationMarkup()}</section>`;
+  return `<section class="mode-screen mode-list-screen">${modeStatusBar()}<div class="mode-list-sheet" ${pendingModeSwitch ? "inert" : ""}><header class="mode-list-header"><button type="button" data-action="mode-list-close" aria-label="关闭模式列表并返回控制页">${icon("x", "关闭模式列表")}</button><h1>List</h1></header>${modeListContent()}</div>${modeSwitchConfirmationMarkup()}</section>`;
 }
 
 function modeProgramDetailScreen() {
@@ -1445,6 +1445,17 @@ function handleAction(action, target) {
     case "home-training-exit": goToPreviousScreen("home"); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
     case "control-open-mode-list": controlOverlay = ""; pendingModeSwitch = null; setState(modeStepPatch("mode-list")); break;
+    case "mode-list-close": {
+      const { kind, screens, controlId } = modeFlowContext();
+      const controlStep = screens.findIndex(screen => screen.id === controlId);
+      const controlHistoryIndex = stepHistory[kind].lastIndexOf(controlStep);
+      if (controlHistoryIndex >= 0) stepHistory[kind].splice(controlHistoryIndex);
+      pendingModeSwitch = null;
+      suppressStepHistory = true;
+      setState(modeStepPatch(controlId));
+      suppressStepHistory = false;
+      break;
+    }
     case "mode-apply-manual": {
       const modeName = target.dataset.modeName || "Stimulation";
       pendingModeSwitch = { type: "manual", name: modeName };
