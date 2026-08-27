@@ -1,11 +1,12 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.16";
+const VERSION = "0.4.17";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
 
 const CONTROL_IMAGE = "home-03-control-v043.png";
 const PUMPING_IMAGE = "home-04-pumping-v043.png";
+const COZY_AI_LOGO = "./assets/figma-755/cozy-ai-rabbit-v045.jpg";
 
 const calibrationScreens = [
   { id: "check-initiation", image: CONTROL_IMAGE, width: 375, height: 956, label: "检查 1 · 泌乳启动", calibration: true },
@@ -31,14 +32,7 @@ const customModeScreens = [
   { id: "mode-introduction", custom: true, width: 402, height: 874, label: "模式介绍弹窗" }
 ];
 
-const hospitalScreens = [
-  { id: "empty", image: "hospital-00-empty.png", width: 393, height: 852, label: "设备页空态" },
-  { id: "manual", image: "hospital-01-manual.png", width: 375, height: 812, label: "手动添加设备" },
-  { id: "found", image: "hospital-02-found-v043.png", width: 375, height: 812, label: "发现设备" },
-  { id: "scan", image: "hospital-03-scan-v043.png", width: 375, height: 812, label: "扫描设备" },
-  { id: "code", image: "hospital-04-code.png", width: 415, height: 874, label: "输入验证码" },
-  { id: "binding", image: "hospital-05-binding.png", width: 375, height: 812, label: "绑定中" },
-  { id: "success", image: "hospital-06-success.png", width: 375, height: 812, label: "绑定成功" },
+const sharedPostConnectionScreens = [
   { id: "training-welcome", image: "home-00-welcome-v043.png", width: 393, height: 852, label: "设备教学欢迎页" },
   { id: "training-guide", image: "home-01-guide-v043.png", width: 393, height: 852, label: "设备教学详情页" },
   { id: "training-guide-final", image: "home-01b-guide-final-v043.png", width: 393, height: 852, label: "设备教学最后一页" },
@@ -52,9 +46,20 @@ const hospitalScreens = [
   { id: "pump-logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
   { id: "pump-dashboard", view: "insights-home", width: 402, height: 1400, label: "AI 吸乳子首页" },
   { id: "device-home", view: "device-ai", width: 393, height: 852, label: "AI 设备页" },
-  { id: "hospital-insight-detail", view: "insight-detail", width: 402, height: 874, label: "AI 洞察详情" },
-  { id: "hospital-cozy-chat", view: "cozy-chat", width: 402, height: 874, label: "CozyAI 对话" },
-  { id: "hospital-community", view: "community", width: 402, height: 1040, label: "Pumping moms 群组" }
+  { id: "insight-detail", view: "insight-detail", width: 402, height: 874, label: "AI 洞察详情" },
+  { id: "cozy-chat", view: "cozy-chat", width: 402, height: 874, label: "CozyAI 对话" },
+  { id: "community", view: "community", width: 402, height: 1040, label: "Pumping moms 群组" }
+];
+
+const hospitalScreens = [
+  { id: "empty", image: "hospital-00-empty.png", width: 393, height: 852, label: "设备页空态" },
+  { id: "manual", image: "hospital-01-manual.png", width: 375, height: 812, label: "手动添加设备" },
+  { id: "found", image: "hospital-02-found-v043.png", width: 375, height: 812, label: "发现设备" },
+  { id: "scan", image: "hospital-03-scan-v043.png", width: 375, height: 812, label: "扫描设备" },
+  { id: "code", image: "hospital-04-code.png", width: 415, height: 874, label: "输入验证码" },
+  { id: "binding", image: "hospital-05-binding.png", width: 375, height: 812, label: "绑定中" },
+  { id: "success", image: "hospital-06-success.png", width: 375, height: 812, label: "绑定成功" },
+  ...sharedPostConnectionScreens
 ];
 
 const homeScreens = [
@@ -63,22 +68,7 @@ const homeScreens = [
   { id: "connect-connecting", image: "home-connect-00-empty.png", width: 393, height: 852, label: "正在连接 V4" },
   { id: "connect-done", image: "home-connect-00-empty.png", width: 393, height: 852, label: "V4 连接完成" },
   { id: "connect-device", image: "home-connect-04-added-v036.png", width: 393, height: 852, label: "设备已添加" },
-  { id: "welcome", image: "home-00-welcome-v043.png", width: 393, height: 852, label: "设备助手欢迎页" },
-  { id: "guide", image: "home-01-guide-v043.png", width: 393, height: 852, label: "设备助手教学页" },
-  { id: "guide-final", image: "home-01b-guide-final-v043.png", width: 393, height: 852, label: "设备助手教学最后一页" },
-  { id: "ready", image: "home-02-ready-v043.png", width: 393, height: 852, label: "设备助手完成页" },
-  { id: "control", image: CONTROL_IMAGE, width: 375, height: 956, label: "吸乳控制初始状态" },
-  { id: "device-settings", view: "device-settings", width: 402, height: 874, label: "设备管理" },
-  ...customModeScreens,
-  ...calibrationScreens,
-  { id: "pumping", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
-  { id: "finished", image: "home-05-finished.png", width: 402, height: 874, label: "完成吸乳" },
-  { id: "logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
-  { id: "dashboard", view: "insights-home", width: 402, height: 1400, label: "AI 吸乳子首页" },
-  { id: "device", view: "device-ai", width: 393, height: 852, label: "AI 设备页" },
-  { id: "home-insight-detail", view: "insight-detail", width: 402, height: 874, label: "AI 洞察详情" },
-  { id: "home-cozy-chat", view: "cozy-chat", width: 402, height: 874, label: "CozyAI 对话" },
-  { id: "home-community", view: "community", width: 402, height: 1040, label: "Pumping moms 群组" }
+  ...sharedPostConnectionScreens
 ];
 
 const defaults = {
@@ -296,23 +286,22 @@ function contentCardHotspots() {
 }
 
 function trainingGuideHotspots(kind, final = false) {
-  const prefix = kind === "hospital" ? "hospital" : "home";
+  const kindAttribute = `data-kind="${kind}"`;
   return [
-    hotspot(`${prefix}-training-exit`, "关闭设备教学", 3.8, 6.6, 12.5, 6.3),
+    hotspot("training-exit", "关闭设备教学", 3.8, 6.6, 12.5, 6.3, kindAttribute),
     hotspot("guide-toggle-video", state.guideVideoPlaying ? "暂停教学视频" : "播放教学视频", 42.0, 37.0, 16.0, 9.0),
     hotspot("guide-open-fullscreen", "全屏查看教学视频", 86.0, 26.0, 11.0, 7.0),
     hotspot("guide-show-how", "展开 How to do it", 4.0, 65.0, 92.0, 7.0),
     hotspot("guide-show-warning", "展开 What to watch out for", 4.0, 72.0, 92.0, 7.0),
     final ? hotspot("ready-open-assistant", "打开 Cozy Assistant", 85.0, 7.4, 12.0, 6.0, `data-kind="${kind}"`) : "",
-    final ? "" : hotspot(`${prefix}-prev`, "上一步", 4.2, 89.5, 30.2, 6.7),
-    hotspot(`${prefix}-next`, final ? "完成设备设置" : "下一步", final ? 4.1 : 37.6, 89.5, final ? 91.8 : 58.4, 6.8)
+    final ? "" : hotspot("flow-prev", "上一步", 4.2, 89.5, 30.2, 6.7, kindAttribute),
+    hotspot("flow-next", final ? "完成设备设置" : "下一步", final ? 4.1 : 37.6, 89.5, final ? 91.8 : 58.4, 6.8, kindAttribute)
   ].join("");
 }
 
 function readyHotspots(kind) {
-  const startAction = kind === "hospital" ? "hospital-open-control" : "home-next";
   return [
-    hotspot(startAction, "开始使用 V4", 6.0, 49.5, 88.0, 6.0),
+    hotspot("open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0, `data-kind="${kind}"`),
     hotspot("ready-open-assistant", "打开 Cozy Assistant", 8.0, 72.7, 84.0, 7.0, `data-kind="${kind}"`),
     hotspot("ready-open-clean-guide", "打开 Clean & Assemble", 8.0, 80.3, 84.0, 7.0, `data-kind="${kind}"`),
     hotspot("ready-contact-support", "联系 Momcozy 支持", 8.0, 88.0, 84.0, 6.5)
@@ -340,11 +329,10 @@ function controlHotspots(kind, modeAction = "control-open-mode-list", helpAction
 }
 
 function screenBackHotspot(kind, screen) {
-  const backScreens = kind === "hospital"
-    ? new Set(["manual", "found", "scan", "code", "binding", "success", "pump-control", "pump-running", "pump-finished", "pump-dashboard"])
-    : new Set(["control", "pumping", "finished", "dashboard"]);
+  const backScreens = new Set(["pump-control", "pump-running", "pump-finished", "pump-dashboard"]);
+  if (kind === "hospital") ["manual", "found", "scan", "code", "binding", "success"].forEach(id => backScreens.add(id));
   if (!backScreens.has(screen.id)) return "";
-  const position = screen.id === "pump-finished" || screen.id === "finished"
+  const position = screen.id === "pump-finished"
     ? [2.5, 34.8, 13.5, 7.0]
     : screen.id === "code"
       ? [6.5, 7.5, 13.5, 6.5]
@@ -380,31 +368,7 @@ function hospitalHotspots(screen) {
         hotspot("hospital-learn", "学习使用设备", 6.4, 83.2, 87.2, 6.2),
         hotspot("complete-hospital", "完成绑定", 34.0, 90.3, 32.0, 4.0)
       ].join("");
-    case "training-welcome":
-      return [
-        hotspot("hospital-training-ready", "跳过设备教学", 76.8, 7.2, 17.3, 5.5),
-        hotspot("hospital-next", "开始设备教学", 6.0, 87.5, 88.0, 6.0)
-      ].join("");
-    case "training-guide": return trainingGuideHotspots("hospital");
-    case "training-guide-final": return trainingGuideHotspots("hospital", true);
-    case "training-ready": return readyHotspots("hospital");
-    case "pump-control": return controlHotspots("hospital");
-    case "pump-running":
-      return controlHotspots("hospital", "control-open-mode", "control-open-help", "control-open-settings");
-    case "pump-finished":
-      return [
-        hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
-        hotspot("hospital-left-down", "减少左侧奶量", 18.5, 65.9, 12.0, 2.9),
-        hotspot("hospital-right-up", "增加右侧奶量", 69.5, 63.0, 12.0, 2.9),
-        hotspot("hospital-right-down", "减少右侧奶量", 69.5, 65.9, 12.0, 2.9),
-        hotspot("edit-session-time", "修改吸乳日期和时间", 32.0, 43.5, 36.0, 5.5),
-        hotspot("open-duration-picker", "选择吸乳时长", 5.0, 79.5, 90.0, 7.5),
-        hotspot("hospital-save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2)
-      ].join("");
-    case "pump-logged":
-      return hotspot("hospital-show-dashboard", "查看吸乳子场景卡", 0, 0, 100, 100);
-    case "pump-dashboard": return "";
-    default: return "";
+    default: return sharedPostConnectionHotspots("hospital", screen);
   }
 }
 
@@ -417,29 +381,34 @@ function homeHotspots(screen) {
       hotspot("home-connection-start-training", "开始设备教学", 36.0, 36.0, 28.0, 4.8),
       appTabHotspots("home")
     ].join("");
-    case "welcome":
+    default: return sharedPostConnectionHotspots("home", screen);
+  }
+}
+
+function sharedPostConnectionHotspots(kind, screen) {
+  const kindAttribute = `data-kind="${kind}"`;
+  switch (screen.id) {
+    case "training-welcome":
       return [
-        hotspot("home-ready", "跳过设备教学", 76.8, 7.2, 17.3, 5.5),
-        hotspot("home-next", "开始设备教学", 6.0, 87.5, 88.0, 6.0)
+        hotspot("training-skip", "跳过设备教学", 76.8, 7.2, 17.3, 5.5, kindAttribute),
+        hotspot("flow-next", "开始设备教学", 6.0, 87.5, 88.0, 6.0, kindAttribute)
       ].join("");
-    case "guide": return trainingGuideHotspots("home");
-    case "guide-final": return trainingGuideHotspots("home", true);
-    case "ready": return readyHotspots("home");
-    case "control": return controlHotspots("home");
-    case "pumping":
-      return controlHotspots("home", "control-open-mode", "control-open-help", "control-open-settings");
-    case "finished": return [
-      hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
-      hotspot("hospital-left-down", "减少左侧奶量", 18.5, 65.9, 12.0, 2.9),
-      hotspot("hospital-right-up", "增加右侧奶量", 69.5, 63.0, 12.0, 2.9),
-      hotspot("hospital-right-down", "减少右侧奶量", 69.5, 65.9, 12.0, 2.9),
-      hotspot("edit-session-time", "修改吸乳日期和时间", 32.0, 43.5, 36.0, 5.5),
-      hotspot("open-duration-picker", "选择吸乳时长", 5.0, 79.5, 90.0, 7.5),
-      hotspot("save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2)
-    ].join("");
-    case "logged": return hotspot("show-dashboard", "查看吸乳数据", 0, 0, 100, 100);
-    case "dashboard": return hotspot("home-control", "开始 Milk Boost", 72.0, 90.2, 22.0, 6.7);
-    case "device": return hotspot("home-control", "打开吸乳器控制", 4.0, 14.3, 92.0, 32.8);
+    case "training-guide": return trainingGuideHotspots(kind);
+    case "training-guide-final": return trainingGuideHotspots(kind, true);
+    case "training-ready": return readyHotspots(kind);
+    case "pump-control": return controlHotspots(kind);
+    case "pump-running": return controlHotspots(kind, "control-open-mode", "control-open-help", "control-open-settings");
+    case "pump-finished":
+      return [
+        hotspot("volume-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
+        hotspot("volume-left-down", "减少左侧奶量", 18.5, 65.9, 12.0, 2.9),
+        hotspot("volume-right-up", "增加右侧奶量", 69.5, 63.0, 12.0, 2.9),
+        hotspot("volume-right-down", "减少右侧奶量", 69.5, 65.9, 12.0, 2.9),
+        hotspot("edit-session-time", "修改吸乳日期和时间", 32.0, 43.5, 36.0, 5.5),
+        hotspot("open-duration-picker", "选择吸乳时长", 5.0, 79.5, 90.0, 7.5),
+        hotspot("save-session", "保存吸乳记录", 5.0, 90.1, 90.0, 6.2, kindAttribute)
+      ].join("");
+    case "pump-logged": return hotspot("show-dashboard", "查看吸乳数据", 0, 0, 100, 100, kindAttribute);
     default: return "";
   }
 }
@@ -467,7 +436,7 @@ function connectionMarkup(screen) {
 }
 
 function guideExperienceMarkup(screen) {
-  if (!["training-guide", "training-guide-final", "guide", "guide-final"].includes(screen.id)) return "";
+  if (!["training-guide", "training-guide-final"].includes(screen.id)) return "";
   const playback = state.guideVideoPlaying
     ? `<span class="guide-playback-state playing">${icon("pause", "视频播放中")}<small>Playing</small></span>`
     : "";
@@ -483,7 +452,7 @@ function guideExperienceMarkup(screen) {
 }
 
 function durationPickerMarkup(screen) {
-  if (!durationPickerOpen || !["pump-finished", "finished"].includes(screen.id)) return "";
+  if (!durationPickerOpen || screen.id !== "pump-finished") return "";
   const options = ["15 min", "20 min 30 sec", "25 min", "30 min"];
   return `<button type="button" class="duration-picker-shade" data-action="close-duration-picker" aria-label="关闭时长选择"></button>
     <section class="duration-picker" role="dialog" aria-modal="true" aria-label="Pumping duration">
@@ -832,21 +801,18 @@ const pumpingInsights = {
 };
 
 function deviceAiScreen(kind) {
-  const dashboardAction = kind === "hospital" ? "hospital-open-insights" : "home-open-insights";
-  const controlAction = kind === "hospital" ? "hospital-open-control" : "home-control";
-  const communityAction = kind === "hospital" ? "hospital-open-community" : "home-open-community";
   return `<div class="screen-frame experience-frame" style="--content-width:393;--content-height:852">
     <div class="screen-scroll"><div class="screen-canvas device-ai-canvas">
       <img class="figma-screen device-ai-base" src="./assets/figma-755/${rollbackScreens0322.device.image}?v=${VERSION}" width="393" height="852" alt="我的设备" draggable="false" />
-      <button type="button" class="device-pump-link" data-action="${controlAction}" aria-label="打开 Breast Pump 控制页"></button>
+      <button type="button" class="device-pump-link" data-action="open-control" data-kind="${kind}" aria-label="打开 Breast Pump 控制页"></button>
       <section class="device-ai-summary" aria-label="AI 吸乳数据洞察">
         <button type="button" class="cozy-ai-entry" data-action="open-cozy-chat" data-kind="${kind}" aria-label="打开 CozyAI 对话">
-          <img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="" /><span>CozyAI</span>
+          <img src="${COZY_AI_LOGO}" alt="" /><span>CozyAI</span>
         </button>
         <div><strong>AI pumping insights</strong><p>Your output is most consistent between 9–11 AM this week.</p></div>
-        <button type="button" class="device-insight-more" data-action="${dashboardAction}">View more ${icon("chevron-right", "查看更多")}</button>
+        <button type="button" class="device-insight-more" data-action="open-insights" data-kind="${kind}">View more ${icon("chevron-right", "查看更多")}</button>
       </section>
-      <button type="button" class="device-community-entry" data-action="${communityAction}">
+      <button type="button" class="device-community-entry" data-action="open-community" data-kind="${kind}">
         <span class="device-community-mark" aria-hidden="true">M</span>
         <span class="community-entry-copy"><strong>Pumping moms</strong><em><span class="member-dots">A M S</span>128 moms active today</em></span>
         <span class="community-entry-arrow">${icon("chevron-right", "进入群组")}</span>
@@ -880,13 +846,10 @@ function deviceSettingsScreen(kind) {
 }
 
 function insightCallout(kind, insight, copy) {
-  const action = kind === "hospital" ? "hospital-open-insight-detail" : "home-open-insight-detail";
-  return `<aside class="chart-insight"><div><strong>Key insight</strong><p>${copy}</p></div><button type="button" data-action="${action}" data-insight="${insight}">More ${icon("chevron-right", "查看详情")}</button></aside>`;
+  return `<aside class="chart-insight"><div><strong>Key insight</strong><p>${copy}</p></div><button type="button" data-action="open-insight-detail" data-kind="${kind}" data-insight="${insight}">More ${icon("chevron-right", "查看详情")}</button></aside>`;
 }
 
 function insightsHomeScreen(kind) {
-  const controlAction = kind === "hospital" ? "hospital-open-control" : "home-control";
-  const communityAction = kind === "hospital" ? "hospital-open-community" : "home-open-community";
   return `<div class="screen-frame experience-frame insights-frame" style="--content-width:402;--content-height:1400">
     <div class="screen-scroll"><div class="screen-canvas insights-home-canvas">
       ${appStatusBar()}
@@ -895,7 +858,7 @@ function insightsHomeScreen(kind) {
         <section class="daily-summary-card" aria-label="Daily pumping summary">
           <div class="daily-summary-copy"><small>Daily summary</small><h2>Your pumping rhythm felt steadier today.</h2><p>Your sessions formed a more consistent, comfortable pattern that may be worth repeating tomorrow.</p></div>
           <button type="button" class="daily-cozy-entry" data-action="open-cozy-chat" data-kind="${kind}">
-            <img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="CozyAI rabbit" /><span><strong>Chat with CozyAI</strong><small>Ask about today's pumping data</small></span>${icon("chevron-right", "进入对话")}
+            <img src="${COZY_AI_LOGO}" alt="CozyAI rabbit" /><span><strong>Chat with CozyAI</strong><small>Ask about today's pumping data</small></span>${icon("chevron-right", "进入对话")}
           </button>
         </section>
         <article class="data-chart-card pumping-trend-card">
@@ -907,10 +870,10 @@ function insightsHomeScreen(kind) {
           ${insightCallout(kind, "lactation", "Level 5 gave the best comfort-to-output balance.")}
         </article>
         <button type="button" class="expert-guidance-entry" data-action="expert-guidance"><span><small>Expert guidance · 3 min read</small><strong>Build a steadier morning pumping routine</strong><em>Based on today's pumping pattern</em></span>${icon("chevron-right", "查看专家内容")}</button>
-        <section class="insights-community-entry" aria-label="Pumping moms community preview"><button type="button" data-action="${communityAction}"><span class="community-monogram">M</span><span><strong>Pumping moms</strong><small><span class="member-dots">A M S</span>128 moms active today</small></span></button><button type="button" class="community-join-compact ${state.communityJoined ? "joined" : ""}" data-action="community-join" aria-pressed="${state.communityJoined}">${state.communityJoined ? "Joined" : "Join"}</button></section>
+        <section class="insights-community-entry" aria-label="Pumping moms community preview"><button type="button" data-action="open-community" data-kind="${kind}"><span class="community-monogram">M</span><span><strong>Pumping moms</strong><small><span class="member-dots">A M S</span>128 moms active today</small></span></button><button type="button" class="community-join-compact ${state.communityJoined ? "joined" : ""}" data-action="community-join" aria-pressed="${state.communityJoined}">${state.communityJoined ? "Joined" : "Join"}</button></section>
       </div>
     </div></div>
-    <button type="button" class="insights-device-dock" data-action="${controlAction}"><img src="./assets/figma-755/home-pump-control-device.png" alt="V4 吸乳器" /><span><small>Connected · Mobile flow</small><strong>Milk Boost</strong><em>01:00 / 22:00</em></span><b>${icon("play", "打开控制页")}</b></button>
+    <button type="button" class="insights-device-dock" data-action="open-control" data-kind="${kind}"><img src="./assets/figma-755/home-pump-control-device.png" alt="V4 吸乳器" /><span><small>Connected · Mobile flow</small><strong>Milk Boost</strong><em>01:00 / 22:00</em></span><b>${icon("play", "打开控制页")}</b></button>
   </div>`;
 }
 
@@ -923,7 +886,7 @@ function insightDetailScreen(kind) {
       <section class="insight-detail-hero"><small>${insight.kicker}</small><h2>${insight.title}</h2><p>${insight.summary}</p><div class="insight-detail-metrics">${insight.metrics.map(([value, label]) => `<span><strong>${value}</strong><small>${label}</small></span>`).join("")}</div></section>
       <section class="insight-detail-section"><h3>What the data shows</h3><ul>${insight.evidence.map(copy => `<li>${copy}</li>`).join("")}</ul></section>
       <section class="insight-detail-section insight-next-step"><h3>Suggested next step</h3><p>${insight.recommendation}</p></section>
-      <button type="button" class="insight-detail-ask" data-action="open-cozy-chat" data-kind="${kind}" data-context="${insightKey}"><img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="CozyAI rabbit" /><span><strong>Ask CozyAI about this insight</strong><small>The current analysis will be included</small></span>${icon("chevron-right", "进入对话")}</button>
+      <button type="button" class="insight-detail-ask" data-action="open-cozy-chat" data-kind="${kind}" data-context="${insightKey}"><img src="${COZY_AI_LOGO}" alt="CozyAI rabbit" /><span><strong>Ask CozyAI about this insight</strong><small>The current analysis will be included</small></span>${icon("chevron-right", "进入对话")}</button>
     </main>
   </div></div>`;
 }
@@ -934,7 +897,7 @@ function cozyChatScreen(kind) {
   const suggestions = context ? context.questions : ["How do I know the flange fits?", "What if the suction feels weak?", "I am having connection issues."];
   return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:874"><div class="screen-canvas cozy-chat-canvas ${context ? "has-context" : ""} ${messages.length ? "has-messages" : ""}">
     ${appStatusBar()}<header class="cozy-chat-nav"><button type="button" data-action="screen-back" data-kind="${kind}" aria-label="返回上一个页面">${icon("chevron-left", "返回")}</button><h1>CozyAI Device <small>Beta</small></h1><span></span></header>
-    <main class="cozy-chat-body"><div class="cozy-chat-hero"><img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="CozyAI rabbit" /><h2>${context ? "What would you like to understand?" : "How can I help with your Momcozy V4?"}</h2></div>
+    <main class="cozy-chat-body"><div class="cozy-chat-hero"><img src="${COZY_AI_LOGO}" alt="CozyAI rabbit" /><h2>${context ? "What would you like to understand?" : "How can I help with your Momcozy V4?"}</h2></div>
       ${context ? `<aside class="cozy-chat-context"><small>Insight context</small><strong>${context.context}</strong><button type="button" data-action="cozy-chat-clear-context" aria-label="移除洞察上下文">×</button></aside>` : ""}
       <div class="cozy-chat-thread" aria-live="polite">${messages.map(message => `<div class="cozy-chat-bubble ${message.role === "user" ? "is-user" : "is-ai"}">${escapeHtml(message.text)}</div>`).join("")}</div>
       <div class="cozy-chat-suggestions">${suggestions.map(question => `<button type="button" data-action="cozy-chat-suggest" data-question="${escapeHtml(question)}">${escapeHtml(question)}</button>`).join("")}</div>
@@ -964,7 +927,7 @@ function experienceScreenMarkup(kind, screen) {
 }
 
 function controlOverlayMarkup(kind, screen) {
-  if (!controlOverlay || !["pump-control", "control", "pump-running", "pumping"].includes(screen.id)) return "";
+  if (!controlOverlay || !["pump-control", "pump-running"].includes(screen.id)) return "";
 
   const titles = {
     help: "Pumping help",
@@ -996,32 +959,28 @@ function controlOverlayMarkup(kind, screen) {
       ["Milk initiation", "Milk initiation", "waves", "Supports the first letdown"]
     ];
     body = `<p class="control-mode-note">Choose a standard pumping mode for this session.</p><div class="control-mode-sheet-list">${modes.map(([value, label, modeIcon, copy]) => `<button type="button" class="${state.controlMode === value ? "selected" : ""}" data-action="control-sheet-select-mode" data-value="${value}" aria-pressed="${state.controlMode === value}"><span>${icon(modeIcon, label)}</span><span><strong>${label}</strong><small>${copy}</small></span>${icon(state.controlMode === value ? "check" : "chevron-right", state.controlMode === value ? "已选择" : "选择")}</button>`).join("")}</div>`;
-    footerLabel = kind === "hospital" ? "Close" : "Manage modes";
+    footerLabel = "Close";
   }
 
-  const footerAction = controlOverlay === "mode" && kind === "home" ? "control-open-mode-list" : "control-close-overlay";
   return `<button type="button" class="control-overlay-shade" data-action="control-close-overlay" aria-label="关闭${titles[controlOverlay]}"></button>
     <section class="control-overlay-sheet ${controlOverlay}" role="dialog" aria-modal="true" aria-label="${titles[controlOverlay]}">
       <header><h2>${titles[controlOverlay]}</h2><button type="button" data-action="control-close-overlay" aria-label="关闭">${icon("x", "关闭")}</button></header>
       <div class="control-overlay-body">${body}</div>
-      <footer><button type="button" class="control-overlay-action" data-action="${footerAction}">${footerLabel}</button></footer>
+      <footer><button type="button" class="control-overlay-action" data-action="control-close-overlay">${footerLabel}</button></footer>
     </section>`;
 }
 
 function controlSettingsMarkup(kind, screen) {
-  if (!["pump-control", "control", "pump-running", "pumping"].includes(screen.id)) return "";
-  const pumping = ["pump-running", "pumping"].includes(screen.id);
-  const showManualModes = kind === "hospital" || !state.customModeSaved;
+  if (!["pump-control", "pump-running"].includes(screen.id)) return "";
+  const pumping = screen.id === "pump-running";
   const modes = [
     ["Stimulation", "Stimulate", "heart"],
     ["Expression", "Expression", "droplet"],
     ["Mixed", "Mixed", "blend"],
     ["Milk initiation", "Milk initiation", "waves"]
   ];
-  const selector = showManualModes
-    ? `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`
-    : "";
-  const bestLevelEntry = !pumping && showManualModes && state.controlMode === "Expression"
+  const selector = `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`;
+  const bestLevelEntry = !pumping && state.controlMode === "Expression"
     ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位"><span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
     : "";
   const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" data-action="control-select-light" data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
@@ -1044,7 +1003,7 @@ function screenMarkup(kind) {
   const digit = screen.id === "code" && state.codeDigit
     ? `<span class="code-digit" aria-hidden="true">${state.codeDigit}</span><span class="next-enabled" aria-hidden="true">Next</span>`
     : "";
-  const sessionFinished = ["pump-finished", "finished"].includes(screen.id);
+  const sessionFinished = screen.id === "pump-finished";
   const volumes = sessionFinished ? volumeControlsMarkup() : "";
   const durationValue = sessionFinished
     ? `<span class="session-duration-value" aria-live="polite">${escapeHtml(state.sessionDuration)}</span>`
@@ -1055,19 +1014,16 @@ function screenMarkup(kind) {
   const pumpControlButtonMask = screen.image === CONTROL_IMAGE
     ? `<span class="pump-control-native-button-mask" aria-hidden="true"></span>`
     : "";
-  const customControlMode = kind === "home" && ["control", "pumping"].includes(screen.id) && state.customModeSaved
-    ? `<div class="custom-control-mode-card"><div><strong>${escapeHtml(state.customModeName || "Milk Collection Mode-01")}</strong><span>Switch ${icon("chevron-right", "切换模式")}</span></div><p>${escapeHtml(state.customModeDescription)}</p><div><i style="--segment:38%"></i><i style="--segment:62%"></i></div></div>`
-    : "";
   const controlSettings = controlSettingsMarkup(kind, screen);
-  const finishAction = screen.id === "pump-running" ? "hospital-finish-pump" : screen.id === "pumping" ? "finish-pump" : "";
+  const finishAction = screen.id === "pump-running" ? "finish-pump" : "";
   const holdControl = finishAction
     ? `<div class="pumping-actions">
         <button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to Finish</span></button>
         <button type="button" class="pump-pause ${state.pumpPaused ? "paused" : ""}" data-action="toggle-pump-pause" aria-label="${state.pumpPaused ? "继续吸乳" : "暂停吸乳"}" aria-pressed="${state.pumpPaused}">${state.pumpPaused ? icon("play", "继续吸乳") : '<img src="./assets/figma-755/pump-pause.svg" width="20" height="20" alt="" draggable="false" />'}</button>
       </div>`
     : "";
-  const startControl = ["pump-control", "control"].includes(screen.id)
-    ? `<button type="button" class="start-pumping-floating" data-action="${kind === "hospital" ? "hospital-start-pump" : "start-pump"}">Start Pumping</button>`
+  const startControl = screen.id === "pump-control"
+    ? `<button type="button" class="start-pumping-floating" data-action="start-pump" data-kind="${kind}">Start Pumping</button>`
     : "";
   const connection = kind === "home" ? connectionMarkup(screen) : "";
   const checkSheetVisible = Boolean(screen.calibration);
@@ -1076,8 +1032,8 @@ function screenMarkup(kind) {
   const calibration = calibrationMarkup(screen, { entering: calibrationEntering, stepChanging: calibrationStepChanging });
   const controlDialog = controlOverlayMarkup(kind, screen);
   const guideExperience = guideExperienceMarkup(screen);
-  const guideCozyEntry = ["training-guide", "guide"].includes(screen.id)
-    ? `<button type="button" class="guide-cozy-entry" data-action="ready-open-assistant" data-kind="${kind}" aria-label="打开 Cozy Assistant"><img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="" /></button>`
+  const guideCozyEntry = screen.id === "training-guide"
+    ? `<button type="button" class="guide-cozy-entry" data-action="ready-open-assistant" data-kind="${kind}" aria-label="打开 Cozy Assistant"><img src="${COZY_AI_LOGO}" alt="" /></button>`
     : "";
   const durationPicker = durationPickerMarkup(screen);
   const flashlightState = screen.id === "scan" && state.flashlightOn
@@ -1090,7 +1046,6 @@ function screenMarkup(kind) {
         <img class="figma-screen" src="./assets/figma-755/${screen.image}?v=${VERSION}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
         ${deviceOverlay}
         ${pumpControlButtonMask}
-        ${customControlMode}
         ${controlSettings}
         ${flashlightState}
         ${guideCozyEntry}
@@ -1111,9 +1066,21 @@ function prototypeToolbar(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const step = Math.max(0, Math.min(screens.length - 1, state[`${kind}Step`]));
   const screenId = screens[step].id;
-  const status = kind === "hospital"
-    ? (state.sessionLogged ? "吸乳记录已完成" : state.pumpRunning ? (state.pumpPaused ? "吸乳已暂停" : "正在吸乳") : step >= 11 ? "设备已就绪" : state.trainingDone ? "设备教学已完成" : state.deviceBound ? (step >= 7 ? "设备教学中" : "V4 已绑定") : "院端独立演示")
-    : (state.sessionLogged ? "本次记录已保存" : state.pumpRunning ? (state.pumpPaused ? "吸乳已暂停" : "正在吸乳") : screenId === "connect-connecting" ? "正在连接 V4" : screenId === "connect-done" ? "V4 连接完成" : state.homeDeviceConnected ? "V4 已连接" : "等待连接 V4");
+  const trainingStart = screens.findIndex(screen => screen.id === "training-welcome");
+  const controlStart = screens.findIndex(screen => screen.id === "pump-control");
+  const connected = kind === "home" ? state.homeDeviceConnected : state.deviceBound;
+  const connectionStatus = kind === "home"
+    ? (screenId === "connect-connecting" ? "正在连接 V4" : screenId === "connect-done" ? "V4 连接完成" : connected ? "V4 已连接" : "等待连接 V4")
+    : (connected ? "V4 已绑定" : "院端独立演示");
+  const status = state.sessionLogged
+    ? "吸乳记录已完成"
+    : state.pumpRunning
+      ? (state.pumpPaused ? "吸乳已暂停" : "正在吸乳")
+      : step >= controlStart
+        ? "设备已就绪"
+        : step >= trainingStart
+          ? "设备教学中"
+          : connectionStatus;
   const ready = kind === "home" ? state.homeDeviceConnected : state.deviceBound;
   return `<div class="prototype-toolbar">
     <button class="tool-button navigation-trigger" data-action="navigation-open" title="打开 Demo 目录" aria-label="打开 Demo 目录" aria-expanded="${navigationOpen}">${icon("panel-left", "打开 Demo 目录")}</button>
@@ -1130,19 +1097,12 @@ function prototypeToolbar(kind) {
 function prototypeNavigation(kind) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const activeStep = state[`${kind}Step`];
-  const groups = kind === "hospital"
-    ? [
-        { label: "设备连接", icon: "link-2", start: 0, end: 6 },
-        { label: "设备教学", icon: "book-open", start: 7, end: 10 },
-        { label: "模式设置", icon: "sliders-horizontal", start: hospitalScreens.findIndex(screen => screen.id === "pump-control"), end: hospitalScreens.findIndex(screen => screen.id === "mode-introduction") },
-        { label: "吸乳与记录", icon: "activity", start: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), end: hospitalScreens.length - 1 }
-      ]
-    : [
-        { label: "连接设备", icon: "link-2", start: 0, end: 4 },
-        { label: "使用教学", icon: "book-open", start: 5, end: homeScreens.findIndex(screen => screen.id === "ready") },
-        { label: "模式设置", icon: "sliders-horizontal", start: homeScreens.findIndex(screen => screen.id === "control"), end: homeScreens.findIndex(screen => screen.id === "mode-introduction") },
-        { label: "吸乳与记录", icon: "activity", start: homeScreens.findIndex(screen => screen.id === "check-initiation"), end: homeScreens.length - 1 }
-      ];
+  const groups = [
+    { label: "设备连接", icon: "link-2", start: 0, end: screens.findIndex(screen => screen.id === "training-welcome") - 1 },
+    { label: "设备教学", icon: "book-open", start: screens.findIndex(screen => screen.id === "training-welcome"), end: screens.findIndex(screen => screen.id === "training-ready") },
+    { label: "模式设置", icon: "sliders-horizontal", start: screens.findIndex(screen => screen.id === "pump-control"), end: screens.findIndex(screen => screen.id === "mode-introduction") },
+    { label: "吸乳与记录", icon: "activity", start: screens.findIndex(screen => screen.id === "check-initiation"), end: screens.length - 1 }
+  ];
   const items = groups.map(group => {
     const children = screens.slice(group.start, group.end + 1).map((screen, offset) => {
       const index = group.start + offset;
@@ -1212,47 +1172,39 @@ function render() {
       transitionTimer = setTimeout(() => setState({ [key]: screens.findIndex(screen => screen.id === "check-fit-passed") }), 1800);
     }
     if (currentId === "check-fit-passed" && state.autoAdvanceSuppressed !== `${ENTRY}:check-fit-passed`) {
-      const pumpingId = ENTRY === "hospital" ? "pump-running" : "pumping";
       transitionTimer = setTimeout(() => setState({
-        [key]: screens.findIndex(screen => screen.id === pumpingId),
+        [key]: screens.findIndex(screen => screen.id === "pump-running"),
         pumpRunning: true,
         pumpPaused: false
       }, "Fit check passed · Pumping started"), 3000);
     }
   }
-  if (!directNavigation && state.autoAdvanceSuppressed !== "hospital:pump-logged" && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
-    transitionTimer = setTimeout(() => setState({
-      hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard")
-    }), 1600);
-  }
   if (!directNavigation && state.autoAdvanceSuppressed !== "home:connect-connecting" && ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
     transitionTimer = setTimeout(() => setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-done") }), 1400);
   }
-  if (!directNavigation && state.autoAdvanceSuppressed !== "home:logged" && ENTRY === "home" && homeScreens[state.homeStep].id === "logged") {
-    transitionTimer = setTimeout(() => setState({
-      homeStep: homeScreens.findIndex(screen => screen.id === "dashboard")
-    }), 1600);
+  if (!directNavigation && ["hospital", "home"].includes(ENTRY)) {
+    const screens = ENTRY === "hospital" ? hospitalScreens : homeScreens;
+    const key = `${ENTRY}Step`;
+    if (state.autoAdvanceSuppressed !== `${ENTRY}:pump-logged` && screens[state[key]].id === "pump-logged") {
+      transitionTimer = setTimeout(() => setState({
+        [key]: screens.findIndex(screen => screen.id === "pump-dashboard")
+      }), 1600);
+    }
   }
 }
 
 function progressForStep(kind, step) {
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
   const currentId = screens[step].id;
-  if (kind === "hospital") {
-    return {
-      deviceBound: step >= 6,
-      trainingDone: step >= 11,
-      pumpRunning: currentId === "pump-running",
-      pumpPaused: false,
-      sessionLogged: ["pump-logged", "pump-dashboard", "device-home", "hospital-insight-detail", "hospital-cozy-chat", "hospital-community"].includes(currentId)
-    };
-  }
+  const connectionPatch = kind === "hospital"
+    ? { deviceBound: step >= screens.findIndex(screen => screen.id === "success") }
+    : { homeDeviceConnected: step >= screens.findIndex(screen => screen.id === "connect-device") };
   return {
-    homeDeviceConnected: step >= 4,
-    trainingDone: step >= 8,
-    pumpRunning: currentId === "pumping",
+    ...connectionPatch,
+    trainingDone: step >= screens.findIndex(screen => screen.id === "pump-control"),
+    pumpRunning: currentId === "pump-running",
     pumpPaused: false,
-    sessionLogged: ["logged", "dashboard", "device", "home-insight-detail", "home-cozy-chat", "home-community"].includes(currentId)
+    sessionLogged: ["pump-logged", "pump-dashboard", "device-home", "insight-detail", "cozy-chat", "community"].includes(currentId)
   };
 }
 
@@ -1280,7 +1232,7 @@ function updateModeSection(patch) {
 function modeFlowContext() {
   const kind = ENTRY === "hospital" ? "hospital" : "home";
   const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-  return { kind, screens, stepKey: `${kind}Step`, controlId: kind === "hospital" ? "pump-control" : "control" };
+  return { kind, screens, stepKey: `${kind}Step`, controlId: "pump-control" };
 }
 
 function modeStepPatch(screenId) {
@@ -1337,7 +1289,7 @@ function handleAction(action, target) {
         const id = state.sessionLogged ? "device-home" : "empty";
         setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === id) });
       } else {
-        const id = state.sessionLogged ? "device" : state.homeDeviceConnected ? "connect-device" : "connect-empty";
+        const id = state.sessionLogged ? "device-home" : state.homeDeviceConnected ? "connect-device" : "connect-empty";
         setState({ homeStep: homeScreens.findIndex(screen => screen.id === id) });
       }
       break;
@@ -1345,8 +1297,7 @@ function handleAction(action, target) {
     case "app-tab-community": {
       const kind = target.dataset.kind || ENTRY;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const id = kind === "hospital" ? "hospital-community" : "home-community";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id) });
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "community") });
       break;
     }
     case "app-tab-profile": showToast("Me 个人中心入口已打开"); break;
@@ -1368,18 +1319,36 @@ function handleAction(action, target) {
     case "guide-close-fullscreen": guideFullscreen = false; render(); break;
     case "guide-show-how": showToast("先取下集奶杯，再依次拆下法兰和阀门"); break;
     case "guide-show-warning": showToast("清洁前请关机，并确保电子部件保持干燥"); break;
+    case "flow-next": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const key = `${kind}Step`;
+      setState({ [key]: Math.min(screens.length - 1, state[key] + 1) });
+      break;
+    }
+    case "flow-prev": {
+      const kind = target.dataset.kind || ENTRY;
+      const key = `${kind}Step`;
+      setState({ [key]: Math.max(0, state[key] - 1) });
+      break;
+    }
+    case "training-skip": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "training-ready") });
+      break;
+    }
+    case "training-exit": goToPreviousScreen(target.dataset.kind || ENTRY); break;
     case "ready-open-assistant": {
       const kind = target.dataset.kind || ENTRY;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const id = kind === "hospital" ? "hospital-cozy-chat" : "home-cozy-chat";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id), chatContext: "", cozyMessages: [] });
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "cozy-chat"), chatContext: "", cozyMessages: [] });
       break;
     }
     case "ready-open-clean-guide": {
       const kind = target.dataset.kind || ENTRY;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const id = kind === "hospital" ? "training-guide" : "guide";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id) });
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "training-guide") });
       break;
     }
     case "ready-contact-support": showToast("Momcozy support · support@momcozy.com"); break;
@@ -1390,9 +1359,8 @@ function handleAction(action, target) {
     case "control-open-device-assistant": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const id = kind === "hospital" ? "training-guide" : "guide";
       controlOverlay = "";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id) });
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "training-guide") });
       break;
     }
     case "control-open-device-settings": {
@@ -1429,31 +1397,61 @@ function handleAction(action, target) {
     case "enter-code": setState({ codeDigit: target.dataset.value || "4" }, "验证码已填写"); break;
     case "submit-code": if (state.codeDigit) setState({ hospitalStep: 5 }); break;
     case "hospital-learn": setState({ hospitalStep: 7 }); break;
-    case "hospital-training-ready": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "training-ready") }); break;
-    case "hospital-training-exit": goToPreviousScreen("hospital"); break;
     case "complete-hospital": showToast("院端设备绑定演示已完成"); break;
-    case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "院端设备教学已完成"); break;
-    case "hospital-start-pump": controlOverlay = ""; setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
-    case "hospital-finish-pump": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false }); break;
-    case "hospital-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
-    case "hospital-left-down": setState({ leftVolume: Math.max(0, state.leftVolume - 10) }); break;
-    case "hospital-right-up": setState({ rightVolume: Math.min(300, state.rightVolume + 10) }); break;
-    case "hospital-right-down": setState({ rightVolume: Math.max(0, state.rightVolume - 10) }); break;
-    case "hospital-save-session": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-logged"), sessionLogged: true }, `已记录 ${state.leftVolume + state.rightVolume} ml`); break;
-    case "hospital-show-dashboard": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard") }); break;
-    case "hospital-return-device": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "device-home") }); break;
-    case "hospital-open-insights": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard") }); break;
-    case "hospital-open-insight-detail": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "hospital-insight-detail"), activeInsight: pumpingInsights[target.dataset.insight] ? target.dataset.insight : "trend" }); break;
-    case "hospital-open-community": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "hospital-community") }); break;
+    case "hospital-open-control": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "设备教学已完成"); break;
     case "home-connection-found": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-found") }); break;
     case "home-connection-connect": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-connecting") }); break;
     case "home-connection-cancel": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-empty") }); break;
     case "home-connection-complete": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-device"), homeDeviceConnected: true }, "V4 已连接"); break;
-    case "home-connection-start-training": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "welcome"), homeDeviceConnected: true }); break;
-    case "home-next": setState({ homeStep: Math.min(homeScreens.length - 1, state.homeStep + 1) }); break;
-    case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
-    case "home-training-exit": goToPreviousScreen("home"); break;
-    case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
+    case "home-connection-start-training": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "training-welcome"), homeDeviceConnected: true }); break;
+    case "open-control": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "设备教学已完成");
+      break;
+    }
+    case "start-pump": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      controlOverlay = "";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始");
+      break;
+    }
+    case "finish-pump": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false });
+      break;
+    }
+    case "volume-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
+    case "volume-left-down": setState({ leftVolume: Math.max(0, state.leftVolume - 10) }); break;
+    case "volume-right-up": setState({ rightVolume: Math.min(300, state.rightVolume + 10) }); break;
+    case "volume-right-down": setState({ rightVolume: Math.max(0, state.rightVolume - 10) }); break;
+    case "save-session": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-logged"), sessionLogged: true }, `已记录 ${state.leftVolume + state.rightVolume} ml`);
+      break;
+    }
+    case "show-dashboard":
+    case "open-insights": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-dashboard") });
+      break;
+    }
+    case "open-insight-detail": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "insight-detail"), activeInsight: pumpingInsights[target.dataset.insight] ? target.dataset.insight : "trend" });
+      break;
+    }
+    case "open-community": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "community") });
+      break;
+    }
     case "control-open-mode-list": controlOverlay = ""; pendingModeSwitch = null; setState(modeStepPatch("mode-list")); break;
     case "mode-list-close": {
       const { kind, screens, controlId } = modeFlowContext();
@@ -1578,7 +1576,6 @@ function handleAction(action, target) {
       setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort") });
       break;
     }
-    case "start-pump": controlOverlay = ""; setState({ homeStep: homeScreens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始"); break;
     case "calibration-next": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
@@ -1589,8 +1586,7 @@ function handleAction(action, target) {
     case "calibration-close": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const controlId = kind === "hospital" ? "pump-control" : "control";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === controlId) });
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-control") });
       break;
     }
     case "calibration-test-again": {
@@ -1602,9 +1598,8 @@ function handleAction(action, target) {
     case "calibration-use-level": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const controlId = kind === "hospital" ? "pump-control" : "control";
       setState({
-        [`${kind}Step`]: screens.findIndex(screen => screen.id === controlId),
+        [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-control"),
         pumpLevel: state.comfortLevel,
         bestLevelSet: true,
         controlMode: "Expression"
@@ -1615,21 +1610,12 @@ function handleAction(action, target) {
     case "comfort-up": setState({ comfortLevel: Math.min(15, state.comfortLevel + 1) }); break;
     case "pump-level-down": setState({ pumpLevel: Math.max(1, state.pumpLevel - 1) }); break;
     case "pump-level-up": setState({ pumpLevel: Math.min(15, state.pumpLevel + 1) }); break;
-    case "finish-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "finished"), pumpRunning: false, pumpPaused: false }); break;
     case "toggle-pump-pause": setState({ pumpPaused: !state.pumpPaused }, state.pumpPaused ? "继续吸乳" : "吸乳已暂停"); break;
-    case "save-session": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "logged"), sessionLogged: true }, "吸乳记录已保存"); break;
-    case "show-dashboard": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "dashboard") }); break;
-    case "home-device": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "device") }); break;
-    case "home-open-insights": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "dashboard") }); break;
-    case "home-open-insight-detail": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-insight-detail"), activeInsight: pumpingInsights[target.dataset.insight] ? target.dataset.insight : "trend" }); break;
-    case "home-open-community": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-community") }); break;
-    case "home-control": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "control") }); break;
     case "open-cozy-chat": {
       const kind = target.dataset.kind || ENTRY;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const id = kind === "hospital" ? "hospital-cozy-chat" : "home-cozy-chat";
       const context = pumpingInsights[target.dataset.context] ? target.dataset.context : "";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id), chatContext: context, cozyMessages: context === state.chatContext ? state.cozyMessages : [] });
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "cozy-chat"), chatContext: context, cozyMessages: context === state.chatContext ? state.cozyMessages : [] });
       break;
     }
     case "cozy-chat-suggest": sendCozyQuestion(target.dataset.question); break;
