@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.5 - 2026-08-27
+
+- 将已确认的新版吸乳洞察页面同步到院端和居家端：Daily summary 保留唯一 CozyAI 主入口，Pumping Trend 与 Lactation 只显示 `Key insight + More`。
+- 新增两类洞察详情和独立 CozyAI Device / Beta 对话页；支持分析上下文、推荐问题、自定义输入、即时回复，并按真实访问历史返回。
+- 新增 Expert guidance、84px Pumping moms 紧凑入口和 118px 固定酒红设备控制条，同时采用 Figma 的背景、字体层级、22px 圆角、细边框与轻阴影语言。
+- 全局移除主控制、吸乳中和自定义分段中的 Frequency；主控、最佳档位测试和分段编辑统一使用 1–15 档。
+- 院端与居家端均完成 402×874 视觉、滚动、交互、返回和控制上限验证，继续保持独立入口与独立本地状态。
+
 ## 0.4.4 - 2026-08-26
 
 - 居家端 `Programs` 卡片的 `Details` 入口新增独立韵律详情页，按 Figma 节点 `934:50097` 展示六段 Sequential execution 时间线。

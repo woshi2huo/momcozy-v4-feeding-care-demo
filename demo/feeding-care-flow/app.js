@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.4";
+const VERSION = "0.4.5";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 
 const CONTROL_IMAGE = "home-03-control-v043.png";
@@ -36,9 +36,10 @@ const hospitalScreens = [
   { id: "pump-running", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
   { id: "pump-finished", image: "home-05-finished.png", width: 402, height: 874, label: "记录奶量" },
   { id: "pump-logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
-  { id: "pump-dashboard", view: "insights-home", width: 402, height: 1180, label: "AI 吸乳子首页" },
+  { id: "pump-dashboard", view: "insights-home", width: 402, height: 1400, label: "AI 吸乳子首页" },
   { id: "device-home", view: "device-ai", width: 393, height: 852, label: "AI 设备页" },
   { id: "hospital-insight-detail", view: "insight-detail", width: 402, height: 874, label: "AI 洞察详情" },
+  { id: "hospital-cozy-chat", view: "cozy-chat", width: 402, height: 874, label: "CozyAI 对话" },
   { id: "hospital-community", view: "community", width: 402, height: 1040, label: "Pumping moms 群组" }
 ];
 
@@ -64,9 +65,10 @@ const homeScreens = [
   { id: "pumping", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
   { id: "finished", image: "home-05-finished.png", width: 402, height: 874, label: "完成吸乳" },
   { id: "logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
-  { id: "dashboard", view: "insights-home", width: 402, height: 1180, label: "AI 吸乳子首页" },
+  { id: "dashboard", view: "insights-home", width: 402, height: 1400, label: "AI 吸乳子首页" },
   { id: "device", view: "device-ai", width: 393, height: 852, label: "AI 设备页" },
   { id: "home-insight-detail", view: "insight-detail", width: 402, height: 874, label: "AI 洞察详情" },
+  { id: "home-cozy-chat", view: "cozy-chat", width: 402, height: 874, label: "CozyAI 对话" },
   { id: "home-community", view: "community", width: 402, height: 1040, label: "Pumping moms 群组" }
 ];
 
@@ -81,7 +83,6 @@ const defaults = {
   pumpPaused: false,
   sessionLogged: false,
   pumpLevel: 1,
-  controlFrequency: 1,
   controlLight: "Clear",
   controlLightOn: true,
   controlSoundOn: true,
@@ -101,15 +102,17 @@ const defaults = {
   modeTrialPlaying: false,
   modeLightOn: true,
   customModeSections: [
-    { type: "Massage", level: 1, frequency: 1, light: "Clear", duration: 10 },
-    { type: "Breast pumping", level: 1, frequency: 5, light: "Clear", duration: 15 }
+    { type: "Massage", level: 1, light: "Clear", duration: 10 },
+    { type: "Breast pumping", level: 1, light: "Clear", duration: 15 }
   ],
   leftVolume: 0,
   rightVolume: 0,
   sessionDuration: "20 min 30 sec",
   communityJoined: false,
   communityStatus: "",
-  activeInsight: "Daily rhythm",
+  activeInsight: "trend",
+  chatContext: "",
+  cozyMessages: [],
   autoAdvanceSuppressed: ""
 };
 
@@ -463,7 +466,7 @@ function calibrationBody(screen) {
       </div>`;
     case "check-comfort":
       return `<div class="check-body comfort-body">
-        <div class="comfort-control"><span>Current level</span><div><strong>${state.comfortLevel}</strong><small>of 12</small><button type="button" data-action="comfort-down" aria-label="降低负压">−</button><button type="button" class="primary" data-action="comfort-up" aria-label="提高负压">+</button></div></div>
+        <div class="comfort-control"><span>Current level</span><div><strong>${state.comfortLevel}</strong><small>of 15</small><button type="button" data-action="comfort-down" aria-label="降低负压">−</button><button type="button" class="primary" data-action="comfort-up" aria-label="提高负压">+</button></div></div>
         <div class="comfort-tip positive"><strong>Still comfortable?</strong><span>Press + until mildly uncomfortable</span></div>
         <div class="comfort-tip caution"><strong>Mildly uncomfortable?</strong><span>Press − once to return to comfort</span></div>
       </div>`;
@@ -631,7 +634,7 @@ function modeNameScreen() {
 function modeSectionRows(count) {
   return state.customModeSections.slice(0, count).map((section, index) => {
     return `<button type="button" class="mode-segment-row" data-action="mode-edit-section" data-section="${index + 1}">
-      <b>${String(index + 1).padStart(2, "0")}</b><span><strong>${escapeHtml(section.type)}</strong><small>${section.duration} min · Level ${section.level} · Frequency ${section.frequency}</small></span>${icon("chevron-right", "编辑此分段")}
+      <b>${String(index + 1).padStart(2, "0")}</b><span><strong>${escapeHtml(section.type)}</strong><small>${section.duration} min · Level ${section.level} · ${escapeHtml(section.light)}</small></span>${icon("chevron-right", "编辑此分段")}
     </button>`;
   }).join("");
 }
@@ -659,12 +662,10 @@ function modeEditorBody(interactive = true) {
   const index = Math.max(0, Math.min(1, state.modeEditingSection - 1));
   const section = state.customModeSections[index];
   const disabled = interactive ? "" : "disabled";
-  const frequencies = [1, 2, 3, 4, 5].map(value => `<button type="button" class="${section.frequency === value ? "active" : ""}" data-action="mode-select-frequency" data-value="${value}" ${disabled}>${value}</button>`).join("");
   const lights = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${section.light === value ? "active" : ""}" data-action="mode-select-light" data-value="${value}" ${disabled}>${value}</button>`).join("");
   return `<div class="mode-editor-content">
     <section class="mode-editor-card mode-type-card"><div class="mode-field-label"><strong>Mode</strong><span>${escapeHtml(section.type)}</span></div><div class="mode-choice-grid">${modeChoiceButtons(section)}</div></section>
-    <section class="mode-editor-card"><div class="mode-field-label"><strong>Level</strong><span>${section.level} / 12</span></div><div class="mode-stepper"><button type="button" data-action="mode-level-down" ${disabled}>${icon("minus", "降低档位")}</button><b>${section.level}<small>/12</small></b><button type="button" data-action="mode-level-up" ${disabled}>${icon("plus", "提高档位")}</button></div></section>
-    <section class="mode-editor-card"><div class="mode-field-label"><strong>Frequency</strong><span>${section.frequency}</span></div><div class="mode-segmented-control">${frequencies}</div></section>
+    <section class="mode-editor-card"><div class="mode-field-label"><strong>Level</strong><span>${section.level} / 15</span></div><div class="mode-stepper"><button type="button" data-action="mode-level-down" ${disabled}>${icon("minus", "降低档位")}</button><b>${section.level}<small>/15</small></b><button type="button" data-action="mode-level-up" ${disabled}>${icon("plus", "提高档位")}</button></div></section>
     <section class="mode-editor-card"><div class="mode-field-label"><strong>Light</strong><span>${escapeHtml(section.light)}</span><button type="button" class="mode-toggle ${state.modeLightOn ? "on" : ""}" data-action="mode-toggle-light" aria-pressed="${state.modeLightOn}" ${disabled}><i></i></button></div><div class="mode-segmented-control light-control">${lights}</div></section>
     <button type="button" class="mode-trial ${state.modeTrialPlaying ? "playing" : ""}" data-action="mode-toggle-trial" aria-pressed="${state.modeTrialPlaying}" ${disabled}>${icon(state.modeTrialPlaying ? "pause" : "play", state.modeTrialPlaying ? "停止试听" : "试听")}<span>${state.modeTrialPlaying ? "Playing" : "Try it"}</span></button>
   </div>`;
@@ -709,25 +710,57 @@ function experienceHeader(kind, title, action = "screen-back") {
   </header>`;
 }
 
+const pumpingInsights = {
+  trend: {
+    navTitle: "Pumping Trend insight",
+    kicker: "Pumping Trend",
+    title: "Your output stayed steadier across today's sessions.",
+    summary: "Your total volume increased while session length stayed close to your recent routine. The change appears to come from more even output across sessions.",
+    metrics: [["12%", "Above 7-day average"], ["4", "Sessions today"], ["3h 12m", "Average spacing"]],
+    evidence: [
+      "Output increased without a meaningful rise in total pumping time.",
+      "Session volumes stayed within a tighter range than earlier this week.",
+      "Morning and afternoon spacing was close to your recent comfortable pattern."
+    ],
+    recommendation: "Keep tomorrow's first session near the same time, then aim for similar spacing without extending a session just to chase volume.",
+    context: "Pumping Trend: today's volume is 12% above the 7-day average with steadier session spacing.",
+    questions: ["What may have improved my consistency?", "Should I keep the same session timing?", "How can I protect comfort as volume rises?"]
+  },
+  lactation: {
+    navTitle: "Lactation insight",
+    kicker: "Lactation",
+    title: "Level 5 gave the best comfort-to-output balance.",
+    summary: "Your strongest sessions did not require the highest suction. Level 5 paired stable output with fewer comfort adjustments.",
+    metrics: [["Level 5", "Best balance"], ["3 of 4", "Comfortable sessions"], ["Milk Boost", "Most used mode"]],
+    evidence: [
+      "Output remained stable at Level 5 across the longest comfortable sessions.",
+      "Higher levels did not produce a clear improvement in recorded volume.",
+      "Fewer setting changes were made when Milk Boost began at Level 5."
+    ],
+    recommendation: "Start your next session at a lower comfortable level, then move toward Level 5 only if your body feels ready. Comfort should remain the limit.",
+    context: "Lactation: Level 5 provided the best recorded comfort-to-output balance in Milk Boost mode.",
+    questions: ["Why might Level 5 work better for me?", "Should I start every session at Level 5?", "What signs mean I should lower suction?"]
+  }
+};
+
 function deviceAiScreen(kind) {
   const dashboardAction = kind === "hospital" ? "hospital-open-insights" : "home-open-insights";
   const controlAction = kind === "hospital" ? "hospital-open-control" : "home-control";
-  const detailAction = kind === "hospital" ? "hospital-open-insight-detail" : "home-open-insight-detail";
   const communityAction = kind === "hospital" ? "hospital-open-community" : "home-open-community";
   return `<div class="screen-frame experience-frame" style="--content-width:393;--content-height:852">
     <div class="screen-scroll"><div class="screen-canvas device-ai-canvas">
       <img class="figma-screen device-ai-base" src="./assets/figma-755/${rollbackScreens0322.device.image}?v=${VERSION}" width="393" height="852" alt="我的设备" draggable="false" />
       <button type="button" class="device-pump-link" data-action="${controlAction}" aria-label="打开 Breast Pump 控制页"></button>
       <section class="device-ai-summary" aria-label="AI 吸乳数据洞察">
-        <button type="button" class="cozy-ai-entry" data-action="${detailAction}" data-insight-title="Cozy AI coach" aria-label="打开 Cozy AI">
-          <span class="cozy-ai-mark">${icon("sparkles", "Cozy AI")}</span><span>Cozy AI</span>
+        <button type="button" class="cozy-ai-entry" data-action="open-cozy-chat" data-kind="${kind}" aria-label="打开 CozyAI 对话">
+          <img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="" /><span>CozyAI</span>
         </button>
         <div><strong>AI pumping insights</strong><p>Your output is most consistent between 9–11 AM this week.</p></div>
         <button type="button" class="device-insight-more" data-action="${dashboardAction}">View more ${icon("chevron-right", "查看更多")}</button>
       </section>
       <button type="button" class="device-community-entry" data-action="${communityAction}">
-        <span class="community-bubble-stack" aria-hidden="true"><i>pumping</i><i>need<br>company</i><i>tired</i></span>
-        <span class="community-entry-copy"><small>Community group</small><strong>Pumping moms</strong><em><span class="member-dots">A M S</span>128 moms active today</em></span>
+        <span class="device-community-mark" aria-hidden="true">M</span>
+        <span class="community-entry-copy"><strong>Pumping moms</strong><em><span class="member-dots">A M S</span>128 moms active today</em></span>
         <span class="community-entry-arrow">${icon("chevron-right", "进入群组")}</span>
       </button>
       <div class="device-ai-hotspots">${hotspot("app-add-device", "添加设备", 83.0, 6.0, 14.0, 7.0, `data-kind="${kind}"`)}${appTabHotspots(kind)}</div>
@@ -735,46 +768,68 @@ function deviceAiScreen(kind) {
   </div>`;
 }
 
-function insightCallout(kind, title, copy) {
+function insightCallout(kind, insight, copy) {
   const action = kind === "hospital" ? "hospital-open-insight-detail" : "home-open-insight-detail";
-  return `<aside class="chart-insight"><span class="chart-insight-icon">${icon("sparkles", "AI 洞察")}</span><div><strong>AI Insight</strong><p>${copy}</p></div><button type="button" data-action="${action}" data-insight-title="${title}">More</button></aside>`;
+  return `<aside class="chart-insight"><div><strong>Key insight</strong><p>${copy}</p></div><button type="button" data-action="${action}" data-insight="${insight}">More ${icon("chevron-right", "查看详情")}</button></aside>`;
 }
 
 function insightsHomeScreen(kind) {
-  const deviceAction = kind === "hospital" ? "hospital-return-device" : "home-device";
-  return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:1180">
+  const controlAction = kind === "hospital" ? "hospital-open-control" : "home-control";
+  const communityAction = kind === "hospital" ? "hospital-open-community" : "home-open-community";
+  return `<div class="screen-frame experience-frame insights-frame" style="--content-width:402;--content-height:1400">
     <div class="screen-scroll"><div class="screen-canvas insights-home-canvas">
       ${appStatusBar()}
       ${experienceHeader(kind, "Pumping")}
       <div class="insights-scroll-content">
-        <section class="insights-hero"><span>${icon("sparkles", "Cozy AI")}</span><div><small>Cozy AI weekly read</small><strong>Your morning sessions are becoming more predictable.</strong></div></section>
-        <article class="data-chart-card">
-          <header><div><small>7-day trend</small><h2>Daily volume</h2></div><strong>680 <small>ml</small></strong></header>
-          <div class="volume-bars" aria-label="过去七天奶量柱状图"><i style="--h:46%"><b>M</b></i><i style="--h:58%"><b>T</b></i><i style="--h:52%"><b>W</b></i><i style="--h:70%"><b>T</b></i><i style="--h:64%"><b>F</b></i><i style="--h:84%"><b>S</b></i><i class="today" style="--h:78%"><b>S</b></i></div>
-          ${insightCallout(kind, "Daily volume", "Volume is 12% above your 7-day average, led by two stronger morning sessions.")}
+        <section class="daily-summary-card" aria-label="Daily pumping summary">
+          <div class="daily-summary-copy"><small>Daily summary</small><h2>Your pumping rhythm felt steadier today.</h2><p>Your sessions formed a more consistent, comfortable pattern that may be worth repeating tomorrow.</p></div>
+          <button type="button" class="daily-cozy-entry" data-action="open-cozy-chat" data-kind="${kind}">
+            <img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="CozyAI rabbit" /><span><strong>Chat with CozyAI</strong><small>Ask about today's pumping data</small></span>${icon("chevron-right", "进入对话")}
+          </button>
+        </section>
+        <article class="data-chart-card pumping-trend-card">
+          <img class="insight-chart-image" src="./assets/figma-755/pumping-trend-v045.png" alt="Pumping Trend chart" />
+          ${insightCallout(kind, "trend", "Today is 12% above your 7-day average.")}
         </article>
-        <article class="data-chart-card">
-          <header><div><small>Session rhythm</small><h2>Letdown & duration</h2></div><strong>18 <small>min</small></strong></header>
-          <div class="rhythm-chart" aria-label="吸乳节奏趋势图"><svg viewBox="0 0 320 92" role="img"><path d="M4 72 C35 64 48 25 79 38 S126 72 156 47 S205 20 236 41 S282 68 316 25" fill="none" stroke="#8f0027" stroke-width="4" stroke-linecap="round"/><path d="M4 82 L316 82" stroke="#eadde1" stroke-width="1"/></svg><span>9:35 AM</span><span>9:53 AM</span></div>
-          ${insightCallout(kind, "Session rhythm", "Your second letdown arrived 2 minutes earlier when using the Gentle rhythm.")}
+        <article class="data-chart-card lactation-card">
+          <img class="insight-chart-image" src="./assets/figma-755/lactation-v045.png" alt="Lactation level and mode data" />
+          ${insightCallout(kind, "lactation", "Level 5 gave the best comfort-to-output balance.")}
         </article>
-        <article class="data-chart-card efficiency-card">
-          <header><div><small>Pattern quality</small><h2>Efficiency</h2></div><strong>86<small>%</small></strong></header>
-          <div class="efficiency-metrics"><span><b>4</b><small>sessions</small></span><span><b>170</b><small>ml avg.</small></span><span><b>4.8</b><small>level avg.</small></span></div>
-          ${insightCallout(kind, "Efficiency", "Level 5 gives your best output-to-comfort balance; keep it as tomorrow's starting point.")}
-        </article>
-        <button type="button" class="insights-device-dock" data-action="${deviceAction}"><img src="./assets/figma-755/home-pump-control-device.png" alt="V4 吸乳器" /><span><small>Connected device</small><strong>Momcozy V4</strong></span>${icon("chevron-right", "返回设备页")}</button>
+        <button type="button" class="expert-guidance-entry" data-action="expert-guidance"><span><small>Expert guidance · 3 min read</small><strong>Build a steadier morning pumping routine</strong><em>Based on today's pumping pattern</em></span>${icon("chevron-right", "查看专家内容")}</button>
+        <section class="insights-community-entry" aria-label="Pumping moms community preview"><button type="button" data-action="${communityAction}"><span class="community-monogram">M</span><span><strong>Pumping moms</strong><small><span class="member-dots">A M S</span>128 moms active today</small></span></button><button type="button" class="community-join-compact ${state.communityJoined ? "joined" : ""}" data-action="community-join" aria-pressed="${state.communityJoined}">${state.communityJoined ? "Joined" : "Join"}</button></section>
       </div>
     </div></div>
+    <button type="button" class="insights-device-dock" data-action="${controlAction}"><img src="./assets/figma-755/home-pump-control-device.png" alt="V4 吸乳器" /><span><small>Connected · Mobile flow</small><strong>Milk Boost</strong><em>01:00 / 22:00</em></span><b>${icon("play", "打开控制页")}</b></button>
   </div>`;
 }
 
 function insightDetailScreen(kind) {
-  return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:874"><div class="screen-scroll"><div class="screen-canvas insight-detail-canvas">
-    ${appStatusBar()}${experienceHeader(kind, "AI Insight")}
-    <section class="insight-detail-hero"><span>${icon("sparkles", "Cozy AI")}</span><small>Cozy AI analysis</small><h2>${escapeHtml(state.activeInsight)}</h2><p>Built from your recent sessions, saved levels and rhythm choices.</p></section>
-    <section class="insight-detail-body"><article><small>What changed</small><strong>Your pattern is becoming more stable.</strong><p>Morning sessions now vary by less than 8%, while your average session is 2 minutes shorter than last week.</p></article><article><small>Why it matters</small><strong>Consistency can make planning easier.</strong><p>The strongest signal appears when you start between 9:00 and 11:00 AM and keep the first five minutes at a comfortable level.</p></article><article class="insight-next-step"><span>${icon("lightbulb", "建议")}</span><div><small>Try next</small><strong>Start tomorrow at level ${state.bestLevelSet ? state.comfortLevel : 5}</strong><p>Use Gentle rhythm, then reassess after the first letdown.</p></div></article></section>
-  </div></div></div>`;
+  const insightKey = pumpingInsights[state.activeInsight] ? state.activeInsight : "trend";
+  const insight = pumpingInsights[insightKey];
+  return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:874"><div class="screen-canvas insight-detail-canvas">
+    ${appStatusBar()}${experienceHeader(kind, insight.navTitle)}
+    <main class="insight-detail-body">
+      <section class="insight-detail-hero"><small>${insight.kicker}</small><h2>${insight.title}</h2><p>${insight.summary}</p><div class="insight-detail-metrics">${insight.metrics.map(([value, label]) => `<span><strong>${value}</strong><small>${label}</small></span>`).join("")}</div></section>
+      <section class="insight-detail-section"><h3>What the data shows</h3><ul>${insight.evidence.map(copy => `<li>${copy}</li>`).join("")}</ul></section>
+      <section class="insight-detail-section insight-next-step"><h3>Suggested next step</h3><p>${insight.recommendation}</p></section>
+      <button type="button" class="insight-detail-ask" data-action="open-cozy-chat" data-kind="${kind}" data-context="${insightKey}"><img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="CozyAI rabbit" /><span><strong>Ask CozyAI about this insight</strong><small>The current analysis will be included</small></span>${icon("chevron-right", "进入对话")}</button>
+    </main>
+  </div></div>`;
+}
+
+function cozyChatScreen(kind) {
+  const context = pumpingInsights[state.chatContext] || null;
+  const messages = Array.isArray(state.cozyMessages) ? state.cozyMessages : [];
+  const suggestions = context ? context.questions : ["How do I know the flange fits?", "What if the suction feels weak?", "I am having connection issues."];
+  return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:874"><div class="screen-canvas cozy-chat-canvas ${context ? "has-context" : ""} ${messages.length ? "has-messages" : ""}">
+    ${appStatusBar()}<header class="cozy-chat-nav"><button type="button" data-action="screen-back" data-kind="${kind}" aria-label="返回上一个页面">${icon("chevron-left", "返回")}</button><h1>CozyAI Device <small>Beta</small></h1><span></span></header>
+    <main class="cozy-chat-body"><div class="cozy-chat-hero"><img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="CozyAI rabbit" /><h2>${context ? "What would you like to understand?" : "How can I help with your Momcozy V4?"}</h2></div>
+      ${context ? `<aside class="cozy-chat-context"><small>Insight context</small><strong>${context.context}</strong><button type="button" data-action="cozy-chat-clear-context" aria-label="移除洞察上下文">×</button></aside>` : ""}
+      <div class="cozy-chat-thread" aria-live="polite">${messages.map(message => `<div class="cozy-chat-bubble ${message.role === "user" ? "is-user" : "is-ai"}">${escapeHtml(message.text)}</div>`).join("")}</div>
+      <div class="cozy-chat-suggestions">${suggestions.map(question => `<button type="button" data-action="cozy-chat-suggest" data-question="${escapeHtml(question)}">${escapeHtml(question)}</button>`).join("")}</div>
+    </main>
+    <form class="cozy-chat-composer" data-cozy-chat-form><div><button type="button" data-action="cozy-chat-context-info" aria-label="添加上下文">${icon("plus", "添加上下文")}</button><input name="cozy-message" type="text" autocomplete="off" placeholder="${context ? "Ask about this insight" : "Ask about your Momcozy V4"}" aria-label="发送给 CozyAI 的消息" /><button type="submit" aria-label="发送消息">${icon("arrow-up", "发送")}</button></div><small>AI-generated, not professional advice</small></form>
+  </div></div>`;
 }
 
 function communityScreen(kind) {
@@ -791,6 +846,7 @@ function experienceScreenMarkup(kind, screen) {
   if (screen.view === "device-ai") return deviceAiScreen(kind);
   if (screen.view === "insights-home") return insightsHomeScreen(kind);
   if (screen.view === "insight-detail") return insightDetailScreen(kind);
+  if (screen.view === "cozy-chat") return cozyChatScreen(kind);
   if (screen.view === "community") return communityScreen(kind);
   return "";
 }
@@ -859,11 +915,10 @@ function controlSettingsMarkup(kind, screen) {
   const bestLevelEntry = !pumping && showManualModes && state.controlMode === "Lactation"
     ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位"><span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
     : "";
-  const frequencies = [1, 2, 3, 4, 5].map(value => `<button type="button" class="${state.controlFrequency === value ? "active" : ""}" data-action="control-select-frequency" data-value="${value}" aria-pressed="${state.controlFrequency === value}">${value}</button>`).join("");
   const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" data-action="control-select-light" data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
   return `${lactationHeader}${selector}
-    <span class="control-level-summary" aria-hidden="true">${state.pumpLevel}</span><span class="control-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 12</small></span>${bestLevelEntry}
-    <span class="control-frequency-summary" aria-live="polite">${state.controlFrequency}</span><div class="control-frequency-selector" aria-label="Frequency">${frequencies}</div>
+    <span class="control-level-summary" aria-hidden="true">${state.pumpLevel}</span><span class="control-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 15</small></span>${bestLevelEntry}
+    <span class="control-secondary-settings-mask" aria-hidden="true"></span><span class="control-light-card-bg" aria-hidden="true"></span><strong class="control-light-label">Light</strong>
     <span class="control-light-summary" aria-live="polite">${state.controlLightOn ? escapeHtml(state.controlLight) : "Off"}</span>
     <button type="button" class="control-light-toggle ${state.controlLightOn ? "on" : ""}" data-action="control-toggle-light" aria-label="${state.controlLightOn ? "关闭灯光" : "打开灯光"}" aria-pressed="${state.controlLightOn}"><i></i></button>
     <div class="control-light-selector ${state.controlLightOn ? "" : "disabled"}" aria-label="Light">${lightOptions}</div>`;
@@ -1027,6 +1082,10 @@ function render() {
     if (activeRect.top < navigationRect.top) navigation.scrollTop -= navigationRect.top - activeRect.top;
     if (activeRect.bottom > navigationRect.bottom) navigation.scrollTop += activeRect.bottom - navigationRect.bottom;
   });
+  requestAnimationFrame(() => {
+    const chatBody = app.querySelector(".cozy-chat-body");
+    if (chatBody && Array.isArray(state.cozyMessages) && state.cozyMessages.length) chatBody.scrollTop = chatBody.scrollHeight;
+  });
   if (!directNavigation && state.autoAdvanceSuppressed !== "hospital:binding" && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "binding") {
     transitionTimer = setTimeout(() => setState({ hospitalStep: 6, deviceBound: true }, "V4 绑定成功"), 1500);
   }
@@ -1065,7 +1124,7 @@ function progressForStep(kind, step) {
       trainingDone: step >= 11,
       pumpRunning: currentId === "pump-running",
       pumpPaused: false,
-      sessionLogged: ["pump-logged", "pump-dashboard", "device-home", "hospital-insight-detail", "hospital-community"].includes(currentId)
+      sessionLogged: ["pump-logged", "pump-dashboard", "device-home", "hospital-insight-detail", "hospital-cozy-chat", "hospital-community"].includes(currentId)
     };
   }
   return {
@@ -1073,7 +1132,7 @@ function progressForStep(kind, step) {
     trainingDone: step >= 8,
     pumpRunning: currentId === "pumping",
     pumpPaused: false,
-    sessionLogged: ["logged", "dashboard", "device", "home-insight-detail", "home-community"].includes(currentId)
+    sessionLogged: ["logged", "dashboard", "device", "home-insight-detail", "home-cozy-chat", "home-community"].includes(currentId)
   };
 }
 
@@ -1096,6 +1155,22 @@ function updateModeSection(patch) {
   const index = Math.max(0, Math.min(1, state.modeEditingSection - 1));
   const sections = state.customModeSections.map((section, sectionIndex) => sectionIndex === index ? { ...section, ...patch } : section);
   setState({ customModeSections: sections });
+}
+
+function cozyReplyFor(question, contextKey) {
+  if (contextKey === "trend") return "Your improvement looks linked to steadier spacing and more even output across sessions, not longer pumping. Repeat the timing gently and treat comfort as the limit rather than trying to force the same result.";
+  if (contextKey === "lactation") return "Level 5 appears to be your current balance point, but it is not a target you must reach every time. Begin lower, increase gradually, and step down if you notice pinching, rubbing, blanching, or lingering soreness.";
+  if (/flange/i.test(question)) return "A good fit keeps the nipple centered with comfortable movement and minimal areola pulling. Stop and resize if you feel rubbing, pinching, or blanching.";
+  if (/suction|weak/i.test(question)) return "Check that the valve, diaphragm, and tunnel are fully sealed, then confirm the pump is centered. Increase suction only while it remains comfortable.";
+  if (/connection/i.test(question)) return "Keep your phone close to the V4, confirm Bluetooth is on, and reconnect from the device page. If it still fails, power-cycle both pumps once.";
+  return "I can help with fit, comfort, suction, connection, and your recent pumping patterns. Tell me what you are noticing.";
+}
+
+function sendCozyQuestion(rawQuestion) {
+  const question = String(rawQuestion || "").trim();
+  if (!question) return;
+  const messages = Array.isArray(state.cozyMessages) ? state.cozyMessages : [];
+  setState({ cozyMessages: [...messages, { role: "user", text: question }, { role: "assistant", text: cozyReplyFor(question, state.chatContext) }].slice(-12) });
 }
 
 function handleAction(action, target) {
@@ -1164,8 +1239,8 @@ function handleAction(action, target) {
     case "ready-open-assistant": {
       const kind = target.dataset.kind || ENTRY;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const id = kind === "hospital" ? "hospital-insight-detail" : "home-insight-detail";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id), activeInsight: "Cozy Assistant" });
+      const id = kind === "hospital" ? "hospital-cozy-chat" : "home-cozy-chat";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id), chatContext: "", cozyMessages: [] });
       break;
     }
     case "ready-open-clean-guide": {
@@ -1189,7 +1264,6 @@ function handleAction(action, target) {
       setState({ controlMode: target.dataset.value || "Stimulation", customModeSaved: false }, `${target.dataset.value || "Stimulation"} 模式已选择`);
       break;
     }
-    case "control-select-frequency": setState({ controlFrequency: Math.max(1, Math.min(5, Number(target.dataset.value) || 1)) }); break;
     case "control-select-light": setState({ controlLight: target.dataset.value || "Clear" }); break;
     case "control-toggle-light": setState({ controlLightOn: !state.controlLightOn }, state.controlLightOn ? "灯光已关闭" : "灯光已打开"); break;
     case "control-toggle-sound": setState({ controlSoundOn: !state.controlSoundOn }); break;
@@ -1213,7 +1287,7 @@ function handleAction(action, target) {
     case "hospital-show-dashboard": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard") }); break;
     case "hospital-return-device": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "device-home") }); break;
     case "hospital-open-insights": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "pump-dashboard") }); break;
-    case "hospital-open-insight-detail": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "hospital-insight-detail"), activeInsight: target.dataset.insightTitle || "Cozy AI coach" }); break;
+    case "hospital-open-insight-detail": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "hospital-insight-detail"), activeInsight: pumpingInsights[target.dataset.insight] ? target.dataset.insight : "trend" }); break;
     case "hospital-open-community": setState({ hospitalStep: hospitalScreens.findIndex(screen => screen.id === "hospital-community") }); break;
     case "home-connection-found": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-found") }); break;
     case "home-connection-connect": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "connect-connecting") }); break;
@@ -1281,10 +1355,9 @@ function handleAction(action, target) {
     }
     case "mode-level-up": {
       const section = state.customModeSections[state.modeEditingSection - 1];
-      updateModeSection({ level: Math.min(12, section.level + 1) });
+      updateModeSection({ level: Math.min(15, section.level + 1) });
       break;
     }
-    case "mode-select-frequency": updateModeSection({ frequency: Math.max(1, Math.min(5, Number(target.dataset.value) || 1)) }); break;
     case "mode-select-light": updateModeSection({ light: target.dataset.value || "Clear" }); break;
     case "mode-toggle-light": setState({ modeLightOn: !state.modeLightOn }); break;
     case "mode-toggle-trial": setState({ modeTrialPlaying: !state.modeTrialPlaying }, state.modeTrialPlaying ? "试听已停止" : "正在试听当前参数"); break;
@@ -1305,7 +1378,7 @@ function handleAction(action, target) {
       customModeSaved: false
     }, `${target.dataset.value || "Stimulation"} 模式已选择`); break;
     case "control-level-down": setState({ pumpLevel: Math.max(1, state.pumpLevel - 1) }); break;
-    case "control-level-up": setState({ pumpLevel: Math.min(12, state.pumpLevel + 1) }); break;
+    case "control-level-up": setState({ pumpLevel: Math.min(15, state.pumpLevel + 1) }); break;
     case "open-best-level": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
@@ -1347,9 +1420,9 @@ function handleAction(action, target) {
       break;
     }
     case "comfort-down": setState({ comfortLevel: Math.max(1, state.comfortLevel - 1) }); break;
-    case "comfort-up": setState({ comfortLevel: Math.min(12, state.comfortLevel + 1) }); break;
+    case "comfort-up": setState({ comfortLevel: Math.min(15, state.comfortLevel + 1) }); break;
     case "pump-level-down": setState({ pumpLevel: Math.max(1, state.pumpLevel - 1) }); break;
-    case "pump-level-up": setState({ pumpLevel: Math.min(12, state.pumpLevel + 1) }); break;
+    case "pump-level-up": setState({ pumpLevel: Math.min(15, state.pumpLevel + 1) }); break;
     case "calibration-start-pump": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
@@ -1363,9 +1436,21 @@ function handleAction(action, target) {
     case "show-dashboard": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "dashboard") }); break;
     case "home-device": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "device") }); break;
     case "home-open-insights": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "dashboard") }); break;
-    case "home-open-insight-detail": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-insight-detail"), activeInsight: target.dataset.insightTitle || "Cozy AI coach" }); break;
+    case "home-open-insight-detail": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-insight-detail"), activeInsight: pumpingInsights[target.dataset.insight] ? target.dataset.insight : "trend" }); break;
     case "home-open-community": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "home-community") }); break;
     case "home-control": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "control") }); break;
+    case "open-cozy-chat": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const id = kind === "hospital" ? "hospital-cozy-chat" : "home-cozy-chat";
+      const context = pumpingInsights[target.dataset.context] ? target.dataset.context : "";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id), chatContext: context, cozyMessages: context === state.chatContext ? state.cozyMessages : [] });
+      break;
+    }
+    case "cozy-chat-suggest": sendCozyQuestion(target.dataset.question); break;
+    case "cozy-chat-clear-context": setState({ chatContext: "", cozyMessages: [] }); break;
+    case "cozy-chat-context-info": showToast(state.chatContext ? "当前洞察已作为对话上下文" : "可从洞察详情页带入对应上下文"); break;
+    case "expert-guidance": showToast("专家指导内容已打开"); break;
     case "community-join": setState({ communityJoined: !state.communityJoined }, state.communityJoined ? "已退出 Pumping moms" : "已加入 Pumping moms"); break;
     case "community-select-status": setState({ communityStatus: target.dataset.status || "pumping" }, `状态已分享：${target.dataset.status || "pumping"}`); break;
     case "community-share": {
@@ -1419,6 +1504,14 @@ document.addEventListener("input", (event) => {
     : { customModeDescription: event.target.value };
   state = { ...state, ...patch };
   saveState();
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target.closest("[data-cozy-chat-form]");
+  if (!form) return;
+  event.preventDefault();
+  const input = form.elements.namedItem("cozy-message");
+  sendCozyQuestion(input?.value);
 });
 
 document.addEventListener("pointerdown", (event) => {
