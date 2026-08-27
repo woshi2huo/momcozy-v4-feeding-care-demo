@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.19";
+const VERSION = "0.4.20";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -809,18 +809,6 @@ function deviceAiScreen(kind) {
     <div class="screen-scroll"><div class="screen-canvas device-ai-canvas">
       <img class="figma-screen device-ai-base" src="./assets/figma-755/${rollbackScreens0322.device.image}?v=${VERSION}" width="393" height="852" alt="我的设备" draggable="false" />
       <button type="button" class="device-pump-link" data-action="open-control" data-kind="${kind}" aria-label="打开 Breast Pump 控制页"></button>
-      <section class="device-ai-summary" aria-label="AI 吸乳数据洞察">
-        <button type="button" class="cozy-ai-entry" data-action="open-cozy-chat" data-kind="${kind}" aria-label="打开 CozyAI 对话">
-          <img src="${COZY_AI_LOGO}" alt="" /><span>CozyAI</span>
-        </button>
-        <div><strong>AI pumping insights</strong><p>Your output is most consistent between 9–11 AM this week.</p></div>
-        <button type="button" class="device-insight-more" data-action="open-insights" data-kind="${kind}">View more ${icon("chevron-right", "查看更多")}</button>
-      </section>
-      <button type="button" class="device-community-entry" data-action="open-community" data-kind="${kind}">
-        <span class="device-community-mark" aria-hidden="true">M</span>
-        <span class="community-entry-copy"><strong>Pumping moms</strong><em><span class="member-dots">A M S</span>128 moms active today</em></span>
-        <span class="community-entry-arrow">${icon("chevron-right", "进入群组")}</span>
-      </button>
       <div class="device-ai-hotspots">${hotspot("app-add-device", "添加设备", 83.0, 6.0, 14.0, 7.0, `data-kind="${kind}"`)}${appTabHotspots(kind)}</div>
     </div></div>
   </div>`;
