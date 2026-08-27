@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.15";
+const VERSION = "0.4.16";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -555,8 +555,6 @@ function calibrationBody(screen) {
 
 function calibrationFooter(screen) {
   switch (screen.id) {
-    case "check-fit-passed":
-      return `<button type="button" class="check-primary-action" data-action="calibration-start-pump">Start pumping</button>`;
     case "check-comfort":
       return `<button type="button" class="check-primary-action" data-action="calibration-next">Confirm this level</button><button type="button" class="check-text-action" data-action="calibration-close">Exit setup</button>`;
     case "check-comfort-found":
@@ -1213,6 +1211,14 @@ function render() {
     if (currentId === "check-fit" && state.autoAdvanceSuppressed !== `${ENTRY}:check-fit`) {
       transitionTimer = setTimeout(() => setState({ [key]: screens.findIndex(screen => screen.id === "check-fit-passed") }), 1800);
     }
+    if (currentId === "check-fit-passed" && state.autoAdvanceSuppressed !== `${ENTRY}:check-fit-passed`) {
+      const pumpingId = ENTRY === "hospital" ? "pump-running" : "pumping";
+      transitionTimer = setTimeout(() => setState({
+        [key]: screens.findIndex(screen => screen.id === pumpingId),
+        pumpRunning: true,
+        pumpPaused: false
+      }, "Fit check passed · Pumping started"), 3000);
+    }
   }
   if (!directNavigation && state.autoAdvanceSuppressed !== "hospital:pump-logged" && ENTRY === "hospital" && hospitalScreens[state.hospitalStep].id === "pump-logged") {
     transitionTimer = setTimeout(() => setState({
@@ -1609,13 +1615,6 @@ function handleAction(action, target) {
     case "comfort-up": setState({ comfortLevel: Math.min(15, state.comfortLevel + 1) }); break;
     case "pump-level-down": setState({ pumpLevel: Math.max(1, state.pumpLevel - 1) }); break;
     case "pump-level-up": setState({ pumpLevel: Math.min(15, state.pumpLevel + 1) }); break;
-    case "calibration-start-pump": {
-      const kind = ENTRY === "hospital" ? "hospital" : "home";
-      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const pumpingId = kind === "hospital" ? "pump-running" : "pumping";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === pumpingId), pumpRunning: true, pumpPaused: false }, "V4 已开始吸乳");
-      break;
-    }
     case "finish-pump": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "finished"), pumpRunning: false, pumpPaused: false }); break;
     case "toggle-pump-pause": setState({ pumpPaused: !state.pumpPaused }, state.pumpPaused ? "继续吸乳" : "吸乳已暂停"); break;
     case "save-session": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "logged"), sessionLogged: true }, "吸乳记录已保存"); break;
