@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.12";
+const VERSION = "0.4.13";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -133,6 +133,7 @@ let activeVolumeSlider = null;
 let navigationOpen = false;
 let directNavigation = false;
 let controlOverlay = "";
+let pendingModeSwitch = null;
 let guideFullscreen = false;
 let durationPickerOpen = false;
 let previousCheckScreenId = null;
@@ -641,8 +642,25 @@ function modeListContent(interactive = true) {
   </div>`;
 }
 
+function modeSwitchConfirmationMarkup() {
+  if (!pendingModeSwitch) return "";
+  const modeName = escapeHtml(pendingModeSwitch.name);
+  const modeType = pendingModeSwitch.type === "program" ? "Program" : "Manual mode";
+  return `<button type="button" class="mode-switch-confirm-shade" data-action="mode-switch-cancel" aria-label="Keep current mode"></button>
+    <section class="mode-switch-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="mode-switch-confirm-title" aria-describedby="mode-switch-confirm-copy">
+      <span class="mode-switch-confirm-kicker">${modeType}</span>
+      <h2 id="mode-switch-confirm-title">Switch to this mode?</h2>
+      <p id="mode-switch-confirm-copy">Your current pumping mode and settings will be replaced.</p>
+      <div class="mode-switch-confirm-target"><small>New selection</small><strong>${modeName}</strong></div>
+      <div class="mode-switch-confirm-actions">
+        <button type="button" data-action="mode-switch-cancel">Keep current</button>
+        <button type="button" class="primary" data-action="mode-switch-confirm">Switch</button>
+      </div>
+    </section>`;
+}
+
 function modeListScreen() {
-  return `<section class="mode-screen mode-list-screen">${modeStatusBar()}<div class="mode-list-sheet"><header class="mode-list-header"><button type="button" data-action="screen-back" data-kind="${ENTRY}" aria-label="关闭模式列表">${icon("x", "关闭模式列表")}</button><h1>List</h1></header>${modeListContent()}</div></section>`;
+  return `<section class="mode-screen mode-list-screen">${modeStatusBar()}<div class="mode-list-sheet" ${pendingModeSwitch ? "inert" : ""}><header class="mode-list-header"><button type="button" data-action="screen-back" data-kind="${ENTRY}" aria-label="关闭模式列表">${icon("x", "关闭模式列表")}</button><h1>List</h1></header>${modeListContent()}</div>${modeSwitchConfirmationMarkup()}</section>`;
 }
 
 function modeProgramDetailScreen() {
@@ -1292,13 +1310,14 @@ function handleAction(action, target) {
       const currentId = screens[step].id;
       navigationOpen = false;
       controlOverlay = "";
+      pendingModeSwitch = null;
       guideFullscreen = false;
       durationPickerOpen = false;
       directNavigation = true;
       setState({ [key]: step, ...progressForStep(kind, step), autoAdvanceSuppressed: `${kind}:${currentId}` });
       break;
     }
-    case "screen-back": controlOverlay = ""; guideFullscreen = false; durationPickerOpen = false; goToPreviousScreen(target.dataset.kind); break;
+    case "screen-back": controlOverlay = ""; pendingModeSwitch = null; guideFullscreen = false; durationPickerOpen = false; goToPreviousScreen(target.dataset.kind); break;
     case "content-card-open": showToast(`${target.dataset.card || "内容卡片"} 详情已打开`); break;
     case "unsupported-device": showToast(`${target.dataset.device || "该设备"} 不在本次 V4 演示范围内`); break;
     case "app-tab-home": showToast("Home 首页入口已打开"); break;
@@ -1425,17 +1444,11 @@ function handleAction(action, target) {
     case "home-prev": setState({ homeStep: Math.max(0, state.homeStep - 1) }); break;
     case "home-training-exit": goToPreviousScreen("home"); break;
     case "home-ready": setState({ homeStep: homeScreens.findIndex(screen => screen.id === "ready") }); break;
-    case "control-open-mode-list": controlOverlay = ""; setState(modeStepPatch("mode-list")); break;
+    case "control-open-mode-list": controlOverlay = ""; pendingModeSwitch = null; setState(modeStepPatch("mode-list")); break;
     case "mode-apply-manual": {
       const modeName = target.dataset.modeName || "Stimulation";
-      const { controlId } = modeFlowContext();
-      setState({
-        ...modeStepPatch(controlId),
-        selectedManualMode: modeName,
-        customModeName: modeName,
-        customModeSaved: false,
-        controlMode: modeName
-      }, `${modeName} 模式已应用`);
+      pendingModeSwitch = { type: "manual", name: modeName };
+      render();
       break;
     }
     case "mode-open-program-detail":
@@ -1464,13 +1477,32 @@ function handleAction(action, target) {
       modeEditingSection: 1
     }, "新模式已创建"); break;
     case "mode-use-preset": {
+      pendingModeSwitch = { type: "program", name: target.dataset.modeName || "Milk Boost Mode P1" };
+      render();
+      break;
+    }
+    case "mode-switch-cancel": pendingModeSwitch = null; render(); break;
+    case "mode-switch-confirm": {
+      if (!pendingModeSwitch) break;
       const { controlId } = modeFlowContext();
-      setState({
-        ...modeStepPatch(controlId),
-        customModeName: target.dataset.modeName || "Stimulation",
-        customModeSaved: true,
-        controlMode: "Custom"
-      }, "模式已应用");
+      const nextMode = pendingModeSwitch;
+      pendingModeSwitch = null;
+      if (nextMode.type === "program") {
+        setState({
+          ...modeStepPatch(controlId),
+          customModeName: nextMode.name,
+          customModeSaved: true,
+          controlMode: "Custom"
+        }, `${nextMode.name} 已应用`);
+      } else {
+        setState({
+          ...modeStepPatch(controlId),
+          selectedManualMode: nextMode.name,
+          customModeName: nextMode.name,
+          customModeSaved: false,
+          controlMode: nextMode.name
+        }, `${nextMode.name} 模式已应用`);
+      }
       break;
     }
     case "mode-edit-section": setState({
@@ -1601,6 +1633,7 @@ function handleAction(action, target) {
     case "step-back": {
       const key = `${target.dataset.kind}Step`;
       controlOverlay = "";
+      pendingModeSwitch = null;
       guideFullscreen = false;
       durationPickerOpen = false;
       setState({ [key]: Math.max(0, state[key] - 1) });
@@ -1611,6 +1644,7 @@ function handleAction(action, target) {
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
       const key = `${kind}Step`;
       controlOverlay = "";
+      pendingModeSwitch = null;
       guideFullscreen = false;
       durationPickerOpen = false;
       setState({ [key]: Math.min(screens.length - 1, state[key] + 1) });
@@ -1619,6 +1653,7 @@ function handleAction(action, target) {
     case "reset":
       state = { ...defaults };
       controlOverlay = "";
+      pendingModeSwitch = null;
       guideFullscreen = false;
       durationPickerOpen = false;
       stepHistory.hospital = [];
