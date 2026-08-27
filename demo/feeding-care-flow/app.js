@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.8";
+const VERSION = "0.4.9";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -326,9 +326,9 @@ function codeKeypadHotspots() {
   return `${keys.map(([value, x, y]) => hotspot("enter-code", `输入数字 ${value}`, x, y, 29.2, 5.9, `data-value="${value}"`)).join("")}${hotspot("delete-code", "删除验证码", 69.5, 84.6, 22.0, 5.9)}`;
 }
 
-function controlHotspots(kind, modeAction = "control-open-mode-list") {
+function controlHotspots(kind, modeAction = "control-open-mode-list", helpAction = "control-open-device-assistant") {
   return [
-    hotspot("control-open-help", "打开吸乳帮助", 73.0, 4.3, 11.0, 5.7),
+    hotspot(helpAction, helpAction === "control-open-help" ? "打开吸乳帮助" : "打开设备助手", 73.0, 4.3, 11.0, 5.7),
     hotspot("control-open-settings", "打开吸乳器设置", 85.0, 4.3, 11.0, 5.7),
     hotspot(modeAction, "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2),
     hotspot("control-level-down", "降低预设档位", 8.5, 54.3, 20.0, 4.9),
@@ -387,7 +387,7 @@ function hospitalHotspots(screen) {
     case "training-ready": return readyHotspots("hospital");
     case "pump-control": return controlHotspots("hospital");
     case "pump-running":
-      return controlHotspots("hospital", "control-open-mode");
+      return controlHotspots("hospital", "control-open-mode", "control-open-help");
     case "pump-finished":
       return [
         hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
@@ -424,7 +424,7 @@ function homeHotspots(screen) {
     case "ready": return readyHotspots("home");
     case "control": return controlHotspots("home");
     case "pumping":
-      return controlHotspots("home", "control-open-mode");
+      return controlHotspots("home", "control-open-mode", "control-open-help");
     case "finished": return [
       hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
       hotspot("hospital-left-down", "减少左侧奶量", 18.5, 65.9, 12.0, 2.9),
@@ -1332,6 +1332,14 @@ function handleAction(action, target) {
     case "open-duration-picker": durationPickerOpen = true; render(); break;
     case "close-duration-picker": durationPickerOpen = false; render(); break;
     case "select-duration": durationPickerOpen = false; setState({ sessionDuration: target.dataset.value || "20 min 30 sec" }, "吸乳时长已更新"); break;
+    case "control-open-device-assistant": {
+      const kind = ENTRY === "hospital" ? "hospital" : "home";
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const id = kind === "hospital" ? "training-guide" : "guide";
+      controlOverlay = "";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id) });
+      break;
+    }
     case "control-open-help": controlOverlay = "help"; render(); break;
     case "control-open-settings": controlOverlay = "settings"; render(); break;
     case "control-open-mode": controlOverlay = "mode"; render(); break;
