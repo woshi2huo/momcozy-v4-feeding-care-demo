@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.10";
+const VERSION = "0.4.11";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -573,7 +573,7 @@ function calibrationMarkup(screen, motion = {}) {
     "check-fit": ["Fit check", "Keep still while both sides are checked."],
     "check-fit-passed": ["Fit check passed", "Both pumps have a stable seal."],
     "check-comfort": ["Find your best level", "Adjust slowly and stop if it hurts."],
-    "check-comfort-found": ["Best level found", "Your preferred lactation suction is ready."]
+    "check-comfort-found": ["Best level found", "Your preferred expression suction is ready."]
   };
   const [title, subtitle] = headings[screen.id];
   return `<div class="calibration-shade ${motion.entering ? "is-entering" : ""}" aria-hidden="true"></div>
@@ -975,7 +975,7 @@ function controlOverlayMarkup(kind, screen) {
   } else {
     const modes = [
       ["Stimulation", "Stimulate", "heart", "Gentle rhythm for milk release"],
-      ["Lactation", "Lactation", "droplet", "Steady expression rhythm"],
+      ["Expression", "Expression", "droplet", "Steady expression rhythm"],
       ["Mixed", "Mixed", "blend", "Alternates stimulation and expression"],
       ["Milk initiation", "Milk initiation", "waves", "Supports the first letdown"]
     ];
@@ -998,14 +998,14 @@ function controlSettingsMarkup(kind, screen) {
   const showManualModes = kind === "hospital" || !state.customModeSaved;
   const modes = [
     ["Stimulation", "Stimulate", "heart"],
-    ["Lactation", "Lactation", "droplet"],
+    ["Expression", "Expression", "droplet"],
     ["Mixed", "Mixed", "blend"],
     ["Milk initiation", "Milk initiation", "waves"]
   ];
   const selector = showManualModes
     ? `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`
     : "";
-  const bestLevelEntry = !pumping && showManualModes && state.controlMode === "Lactation"
+  const bestLevelEntry = !pumping && showManualModes && state.controlMode === "Expression"
     ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位"><span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
     : "";
   const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" data-action="control-select-light" data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
@@ -1522,7 +1522,7 @@ function handleAction(action, target) {
     case "open-best-level": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      if (state.controlMode !== "Lactation") break;
+      if (state.controlMode !== "Expression") break;
       setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort") });
       break;
     }
@@ -1555,7 +1555,7 @@ function handleAction(action, target) {
         [`${kind}Step`]: screens.findIndex(screen => screen.id === controlId),
         pumpLevel: state.comfortLevel,
         bestLevelSet: true,
-        controlMode: "Lactation"
+        controlMode: "Expression"
       }, `最佳档位已设为 ${state.comfortLevel}`);
       break;
     }
