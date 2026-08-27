@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.11";
+const VERSION = "0.4.12";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -721,7 +721,7 @@ function modeOverviewScreen(complete = false) {
       <div class="mode-segment-list">${modeSectionRows(sectionCount)}</div>
       ${complete ? "" : `<button type="button" class="mode-add-section" data-action="mode-add-section">${icon("plus-circle", "添加分段")}<span>Add Section</span></button>`}
     </div>
-    <div class="mode-bottom-action"><button type="button" class="mode-primary" data-action="mode-save-to-control">Save</button></div>
+    <div class="mode-bottom-action"><button type="button" class="mode-primary" data-action="mode-save-to-list">Save</button></div>
   </section>`;
 }
 
@@ -1503,14 +1503,13 @@ function handleAction(action, target) {
     }); break;
     case "mode-open-introduction": setState(modeStepPatch("mode-introduction")); break;
     case "mode-close-introduction": goToPreviousScreen(modeFlowContext().kind); break;
-    case "mode-save-to-control": {
-      const { controlId } = modeFlowContext();
+    case "mode-save-to-list": {
       setState({
-        ...modeStepPatch(controlId),
+        ...modeStepPatch("mode-list"),
         customModeSaved: true,
         controlMode: "Custom",
         modeTrialPlaying: false
-      }, "自定义模式已保存并应用");
+      }, "自定义模式已保存");
       break;
     }
     case "control-select-mode": setState({
