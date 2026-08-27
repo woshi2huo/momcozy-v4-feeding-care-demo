@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.17";
+const VERSION = "0.4.18";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -1176,7 +1176,7 @@ function render() {
         [key]: screens.findIndex(screen => screen.id === "pump-running"),
         pumpRunning: true,
         pumpPaused: false
-      }, "Fit check passed · Pumping started"), 3000);
+      }, "Fit check passed · Pumping started"), 1000);
     }
   }
   if (!directNavigation && state.autoAdvanceSuppressed !== "home:connect-connecting" && ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
