@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.18";
+const VERSION = "0.4.19";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -329,7 +329,11 @@ function controlHotspots(kind, modeAction = "control-open-mode-list", helpAction
 }
 
 function screenBackHotspot(kind, screen) {
-  const backScreens = new Set(["pump-control", "pump-running", "pump-finished", "pump-dashboard"]);
+  const dashboardBackScreens = new Set(["pump-control", "pump-running", ...calibrationScreens.map(item => item.id)]);
+  if (dashboardBackScreens.has(screen.id)) {
+    return hotspot("open-pump-dashboard", "返回 AI 吸乳子首页", 2.0, 4.0, 13.5, 7.0, `data-kind="${kind}"`);
+  }
+  const backScreens = new Set(["pump-finished", "pump-dashboard"]);
   if (kind === "hospital") ["manual", "found", "scan", "code", "binding", "success"].forEach(id => backScreens.add(id));
   if (!backScreens.has(screen.id)) return "";
   const position = screen.id === "pump-finished"
@@ -1280,6 +1284,17 @@ function handleAction(action, target) {
       break;
     }
     case "screen-back": controlOverlay = ""; pendingModeSwitch = null; guideFullscreen = false; durationPickerOpen = false; goToPreviousScreen(target.dataset.kind); break;
+    case "open-pump-dashboard": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const step = screens.findIndex(screen => screen.id === "pump-dashboard");
+      controlOverlay = "";
+      pendingModeSwitch = null;
+      guideFullscreen = false;
+      durationPickerOpen = false;
+      setState({ [`${kind}Step`]: step, ...progressForStep(kind, step) });
+      break;
+    }
     case "content-card-open": showToast(`${target.dataset.card || "内容卡片"} 详情已打开`); break;
     case "unsupported-device": showToast(`${target.dataset.device || "该设备"} 不在本次 V4 演示范围内`); break;
     case "app-tab-home": showToast("Home 首页入口已打开"); break;
