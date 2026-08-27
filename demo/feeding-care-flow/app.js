@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.9";
+const VERSION = "0.4.10";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -44,6 +44,7 @@ const hospitalScreens = [
   { id: "training-guide-final", image: "home-01b-guide-final-v043.png", width: 393, height: 852, label: "设备教学最后一页" },
   { id: "training-ready", image: "home-02-ready-v043.png", width: 393, height: 852, label: "设备教学完成页" },
   { id: "pump-control", image: CONTROL_IMAGE, width: 375, height: 956, label: "吸乳器控制页" },
+  { id: "device-settings", view: "device-settings", width: 402, height: 874, label: "设备管理" },
   ...customModeScreens,
   ...calibrationScreens,
   { id: "pump-running", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
@@ -67,6 +68,7 @@ const homeScreens = [
   { id: "guide-final", image: "home-01b-guide-final-v043.png", width: 393, height: 852, label: "设备助手教学最后一页" },
   { id: "ready", image: "home-02-ready-v043.png", width: 393, height: 852, label: "设备助手完成页" },
   { id: "control", image: CONTROL_IMAGE, width: 375, height: 956, label: "吸乳控制初始状态" },
+  { id: "device-settings", view: "device-settings", width: 402, height: 874, label: "设备管理" },
   ...customModeScreens,
   ...calibrationScreens,
   { id: "pumping", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
@@ -326,10 +328,10 @@ function codeKeypadHotspots() {
   return `${keys.map(([value, x, y]) => hotspot("enter-code", `输入数字 ${value}`, x, y, 29.2, 5.9, `data-value="${value}"`)).join("")}${hotspot("delete-code", "删除验证码", 69.5, 84.6, 22.0, 5.9)}`;
 }
 
-function controlHotspots(kind, modeAction = "control-open-mode-list", helpAction = "control-open-device-assistant") {
+function controlHotspots(kind, modeAction = "control-open-mode-list", helpAction = "control-open-device-assistant", settingsAction = "control-open-device-settings") {
   return [
     hotspot(helpAction, helpAction === "control-open-help" ? "打开吸乳帮助" : "打开设备助手", 73.0, 4.3, 11.0, 5.7),
-    hotspot("control-open-settings", "打开吸乳器设置", 85.0, 4.3, 11.0, 5.7),
+    hotspot(settingsAction, settingsAction === "control-open-settings" ? "打开吸乳器设置" : "打开设备管理", 85.0, 4.3, 11.0, 5.7),
     hotspot(modeAction, "切换或自定义吸乳模式", 72.0, 29.4, 22.5, 7.2),
     hotspot("control-level-down", "降低预设档位", 8.5, 54.3, 20.0, 4.9),
     hotspot("control-level-up", "提高预设档位", 71.5, 54.3, 20.0, 4.9)
@@ -387,7 +389,7 @@ function hospitalHotspots(screen) {
     case "training-ready": return readyHotspots("hospital");
     case "pump-control": return controlHotspots("hospital");
     case "pump-running":
-      return controlHotspots("hospital", "control-open-mode", "control-open-help");
+      return controlHotspots("hospital", "control-open-mode", "control-open-help", "control-open-settings");
     case "pump-finished":
       return [
         hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
@@ -424,7 +426,7 @@ function homeHotspots(screen) {
     case "ready": return readyHotspots("home");
     case "control": return controlHotspots("home");
     case "pumping":
-      return controlHotspots("home", "control-open-mode", "control-open-help");
+      return controlHotspots("home", "control-open-mode", "control-open-help", "control-open-settings");
     case "finished": return [
       hotspot("hospital-left-up", "增加左侧奶量", 18.5, 63.0, 12.0, 2.9),
       hotspot("hospital-left-down", "减少左侧奶量", 18.5, 65.9, 12.0, 2.9),
@@ -838,6 +840,29 @@ function deviceAiScreen(kind) {
   </div>`;
 }
 
+function deviceSettingsScreen(kind) {
+  const rows = [
+    ["设备名称", "V4-123", ""],
+    ["SN", "FGHJKL22222", "copy"],
+    ["MAC", "DF:45:D5:56:E9:5D", "copy"],
+    ["当前版本", "2.0.0", ""]
+  ];
+  return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:874">
+    <div class="screen-scroll"><div class="screen-canvas device-settings-canvas">
+      ${appStatusBar()}
+      <header class="device-settings-nav"><button type="button" data-action="screen-back" data-kind="${kind}" aria-label="返回控制页">${icon("chevron-left", "返回")}</button><h1>设备管理</h1><span></span></header>
+      <section class="device-settings-hero" aria-label="V4 在线"><img src="./assets/figma-755/home-pump-control-device.png" alt="V4 吸乳器" /><span>在线</span></section>
+      <section class="device-settings-card" aria-label="设备信息">
+        ${rows.map(([label, value, action]) => `<div class="device-settings-row"><span>${label}</span><strong>${value}</strong>${action ? `<button type="button" class="device-copy" data-action="device-settings-copy" data-value="${value}" aria-label="复制 ${label}">${icon("copy", `复制 ${label}`)}</button>` : "<i></i>"}</div>`).join("")}
+        <button type="button" class="device-settings-link" data-action="device-settings-check-update"><span>检查更新<em aria-hidden="true"></em></span>${icon("chevron-right", "检查更新")}</button>
+        <button type="button" class="device-settings-link" data-action="device-settings-factory-reset"><span>恢复出厂设置</span>${icon("chevron-right", "恢复出厂设置")}</button>
+      </section>
+      <button type="button" class="device-settings-delete" data-action="device-settings-delete">删除设备</button>
+      <span class="device-settings-home-indicator" aria-hidden="true"></span>
+    </div></div>
+  </div>`;
+}
+
 function insightCallout(kind, insight, copy) {
   const action = kind === "hospital" ? "hospital-open-insight-detail" : "home-open-insight-detail";
   return `<aside class="chart-insight"><div><strong>Key insight</strong><p>${copy}</p></div><button type="button" data-action="${action}" data-insight="${insight}">More ${icon("chevron-right", "查看详情")}</button></aside>`;
@@ -914,6 +939,7 @@ function communityScreen(kind) {
 
 function experienceScreenMarkup(kind, screen) {
   if (screen.view === "device-ai") return deviceAiScreen(kind);
+  if (screen.view === "device-settings") return deviceSettingsScreen(kind);
   if (screen.view === "insights-home") return insightsHomeScreen(kind);
   if (screen.view === "insight-detail") return insightDetailScreen(kind);
   if (screen.view === "cozy-chat") return cozyChatScreen(kind);
@@ -1340,6 +1366,13 @@ function handleAction(action, target) {
       setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === id) });
       break;
     }
+    case "control-open-device-settings": {
+      const kind = ENTRY === "hospital" ? "hospital" : "home";
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      controlOverlay = "";
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "device-settings") });
+      break;
+    }
     case "control-open-help": controlOverlay = "help"; render(); break;
     case "control-open-settings": controlOverlay = "settings"; render(); break;
     case "control-open-mode": controlOverlay = "mode"; render(); break;
@@ -1353,6 +1386,15 @@ function handleAction(action, target) {
     case "control-toggle-light": setState({ controlLightOn: !state.controlLightOn }, state.controlLightOn ? "灯光已关闭" : "灯光已打开"); break;
     case "control-toggle-sound": setState({ controlSoundOn: !state.controlSoundOn }); break;
     case "control-toggle-auto-lock": setState({ controlAutoLockOn: !state.controlAutoLockOn }); break;
+    case "device-settings-copy": {
+      const value = target.dataset.value || "";
+      navigator.clipboard?.writeText(value).catch(() => {});
+      showToast(`${value} 已复制`);
+      break;
+    }
+    case "device-settings-check-update": showToast("当前已是最新版本 2.0.0"); break;
+    case "device-settings-factory-reset": setState({ pumpLevel: 1, controlMode: "Stimulation", controlLight: "Clear", controlLightOn: true }, "设备设置已恢复为默认值"); break;
+    case "device-settings-delete": showToast("删除设备确认已打开"); break;
     case "hospital-next": setState({ hospitalStep: Math.min(hospitalScreens.length - 1, state.hospitalStep + 1) }); break;
     case "hospital-prev": setState({ hospitalStep: Math.max(0, state.hospitalStep - 1) }); break;
     case "enter-code": setState({ codeDigit: target.dataset.value || "4" }, "验证码已填写"); break;
