@@ -207,6 +207,10 @@ button:disabled { cursor: default; opacity: .35; }
 .control-mode-sheet-list button:active { transform: scale(.98); }
 
 .screen-frame.secondary-overlay-open .screen-scroll { overflow: hidden; }
+.guide-cozy-entry { position: absolute; z-index: 6; top: 7.6%; right: 2.5%; width: 12%; aspect-ratio: 1; overflow: hidden; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: 0 4px 12px rgba(36,15,27,.09); }
+.guide-cozy-entry img { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.guide-cozy-entry:active { transform: scale(.94); }
+.guide-cozy-entry:focus-visible { outline: 3px solid #1570ef; outline-offset: 2px; }
 .guide-playback-state { position: absolute; z-index: 6; top: 39.6%; left: 44.2%; width: 12%; aspect-ratio: 1; display: grid; place-items: center; align-content: center; gap: 1px; border-radius: 50%; color: #fff; background: rgba(143,0,39,.9); box-shadow: 0 7px 20px rgba(79,0,24,.2); pointer-events: none; }
 .guide-playback-state svg { width: 17px; height: 17px; fill: currentColor; }
 .guide-playback-state small { font-size: 7px; }

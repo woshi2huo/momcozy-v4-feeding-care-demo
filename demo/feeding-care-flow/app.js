@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.14";
+const VERSION = "0.4.15";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -1078,6 +1078,9 @@ function screenMarkup(kind) {
   const calibration = calibrationMarkup(screen, { entering: calibrationEntering, stepChanging: calibrationStepChanging });
   const controlDialog = controlOverlayMarkup(kind, screen);
   const guideExperience = guideExperienceMarkup(screen);
+  const guideCozyEntry = ["training-guide", "guide"].includes(screen.id)
+    ? `<button type="button" class="guide-cozy-entry" data-action="ready-open-assistant" data-kind="${kind}" aria-label="打开 Cozy Assistant"><img src="./assets/figma-755/cozy-ai-rabbit-v045.jpg" alt="" /></button>`
+    : "";
   const durationPicker = durationPickerMarkup(screen);
   const flashlightState = screen.id === "scan" && state.flashlightOn
     ? `<span class="scanner-flashlight-state">${icon("flashlight", "闪光灯已开启")}<small>On</small></span>`
@@ -1092,6 +1095,7 @@ function screenMarkup(kind) {
         ${customControlMode}
         ${controlSettings}
         ${flashlightState}
+        ${guideCozyEntry}
         <div class="hotspot-layer">${hotspots}${digit}${volumes}${durationValue}</div>
       </div>
     </div>
