@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.20";
+const VERSION = "0.4.21";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -808,7 +808,7 @@ function deviceAiScreen(kind) {
   return `<div class="screen-frame experience-frame" style="--content-width:393;--content-height:852">
     <div class="screen-scroll"><div class="screen-canvas device-ai-canvas">
       <img class="figma-screen device-ai-base" src="./assets/figma-755/${rollbackScreens0322.device.image}?v=${VERSION}" width="393" height="852" alt="我的设备" draggable="false" />
-      <button type="button" class="device-pump-link" data-action="open-control" data-kind="${kind}" aria-label="打开 Breast Pump 控制页"></button>
+      <button type="button" class="device-pump-link" data-action="open-insights" data-kind="${kind}" aria-label="打开 AI 吸乳子首页"></button>
       <div class="device-ai-hotspots">${hotspot("app-add-device", "添加设备", 83.0, 6.0, 14.0, 7.0, `data-kind="${kind}"`)}${appTabHotspots(kind)}</div>
     </div></div>
   </div>`;
