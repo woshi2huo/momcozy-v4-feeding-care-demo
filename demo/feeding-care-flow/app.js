@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.21";
+const VERSION = "0.4.22";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -865,7 +865,15 @@ function insightsHomeScreen(kind) {
         <section class="insights-community-entry" aria-label="Pumping moms community preview"><button type="button" data-action="open-community" data-kind="${kind}"><span class="community-monogram">M</span><span><strong>Pumping moms</strong><small><span class="member-dots">A M S</span>128 moms active today</small></span></button><button type="button" class="community-join-compact ${state.communityJoined ? "joined" : ""}" data-action="community-join" aria-pressed="${state.communityJoined}">${state.communityJoined ? "Joined" : "Join"}</button></section>
       </div>
     </div></div>
-    <button type="button" class="insights-device-dock" data-action="open-control" data-kind="${kind}"><img src="./assets/figma-755/home-pump-control-device.png" alt="V4 吸乳器" /><span><small>Connected · Mobile flow</small><strong>Milk Boost</strong><em>01:00 / 22:00</em></span><b>${icon("play", "打开控制页")}</b></button>
+    <button type="button" class="insights-device-dock" data-action="open-control" data-kind="${kind}" aria-label="打开 Mobile flow 吸乳器控制页">
+      <span class="insights-dock-device-row">
+        <span class="insights-dock-device-summary"><span class="insights-dock-device-thumb"><img src="./assets/figma-755/insights-dock-device-v0422.png" alt="V4 吸乳器" /></span><strong>Mobile flow</strong><img class="insights-dock-switch" src="./assets/figma-755/insights-dock-device-switch-v0422.svg" alt="" aria-hidden="true" /></span>
+        <img class="insights-dock-enter" src="./assets/figma-755/insights-dock-chevron-v0422.svg" alt="" aria-hidden="true" />
+      </span>
+      <img class="insights-dock-divider" src="./assets/figma-755/insights-dock-divider-v0422.svg" alt="" aria-hidden="true" />
+      <span class="insights-dock-session-row"><span class="insights-dock-session-copy"><strong>Milk Boost</strong><small>01:00 <span>/ 22:00</span></small></span><span class="insights-dock-play"><img src="./assets/figma-755/insights-dock-play-v0422.svg" alt="" aria-hidden="true" /></span></span>
+      <span class="insights-dock-home-indicator" aria-hidden="true"></span>
+    </button>
   </div>`;
 }
 
