@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.22";
+const VERSION = "0.4.23";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -867,7 +867,7 @@ function insightsHomeScreen(kind) {
     </div></div>
     <button type="button" class="insights-device-dock" data-action="open-control" data-kind="${kind}" aria-label="打开 Mobile flow 吸乳器控制页">
       <span class="insights-dock-device-row">
-        <span class="insights-dock-device-summary"><span class="insights-dock-device-thumb"><img src="./assets/figma-755/insights-dock-device-v0422.png" alt="V4 吸乳器" /></span><strong>Mobile flow</strong><img class="insights-dock-switch" src="./assets/figma-755/insights-dock-device-switch-v0422.svg" alt="" aria-hidden="true" /></span>
+        <span class="insights-dock-device-summary"><span class="insights-dock-device-thumb"><img src="./assets/figma-755/home-pump-control-device.png" alt="V4 吸乳器" /></span><strong>Mobile flow</strong><img class="insights-dock-switch" src="./assets/figma-755/insights-dock-device-switch-v0422.svg" alt="" aria-hidden="true" /></span>
         <img class="insights-dock-enter" src="./assets/figma-755/insights-dock-chevron-v0422.svg" alt="" aria-hidden="true" />
       </span>
       <img class="insights-dock-divider" src="./assets/figma-755/insights-dock-divider-v0422.svg" alt="" aria-hidden="true" />
