@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.23";
+const VERSION = "0.4.24";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -981,7 +981,7 @@ function controlSettingsMarkup(kind, screen) {
   ];
   const selector = `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`;
   const bestLevelEntry = !pumping && state.controlMode === "Expression"
-    ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位"><span>${state.bestLevelSet ? "Retest best level" : "Best level test"}</span></button>`
+    ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位"><span>Best level test</span></button>`
     : "";
   const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" data-action="control-select-light" data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
   return `${selector}
