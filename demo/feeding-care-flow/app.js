@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.25";
+const VERSION = "0.4.26";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -7,6 +7,8 @@ const VOLUME_DRAG_STEP = 5;
 const CONTROL_IMAGE = "home-03-control-v043.png";
 const PUMPING_IMAGE = "home-04-pumping-v043.png";
 const COZY_AI_LOGO = "./assets/figma-755/cozy-ai-rabbit-v045.jpg";
+const COZY_AI_DEVICE_RABBIT = "./assets/figma-755/cozy-ai-device-rabbit-v046.png";
+const COZY_AI_DEVICE_BACKGROUND = "./assets/figma-755/cozy-ai-device-background-v046.svg";
 
 const calibrationScreens = [
   { id: "check-initiation", image: CONTROL_IMAGE, width: 375, height: 956, label: "检查 1 · 泌乳启动", calibration: true },
@@ -894,15 +896,16 @@ function insightDetailScreen(kind) {
 function cozyChatScreen(kind) {
   const context = pumpingInsights[state.chatContext] || null;
   const messages = Array.isArray(state.cozyMessages) ? state.cozyMessages : [];
-  const suggestions = context ? context.questions : ["How do I know the flange fits?", "What if the suction feels weak?", "I am having connection issues."];
+  const suggestions = context ? context.questions : ["How do I know the flange fits?", "What if the suction feels weak? What if the suction feels weak?", "Connection issues."];
   return `<div class="screen-frame experience-frame" style="--content-width:402;--content-height:874"><div class="screen-canvas cozy-chat-canvas ${context ? "has-context" : ""} ${messages.length ? "has-messages" : ""}">
-    ${appStatusBar()}<header class="cozy-chat-nav"><button type="button" data-action="screen-back" data-kind="${kind}" aria-label="返回上一个页面">${icon("chevron-left", "返回")}</button><h1>CozyAI Device <small>Beta</small></h1><span></span></header>
-    <main class="cozy-chat-body"><div class="cozy-chat-hero"><img src="${COZY_AI_LOGO}" alt="CozyAI rabbit" /><h2>${context ? "What would you like to understand?" : "How can I help with your Momcozy V4?"}</h2></div>
+    <img class="cozy-chat-background" src="${COZY_AI_DEVICE_BACKGROUND}" alt="" aria-hidden="true" />
+    ${appStatusBar()}<header class="cozy-chat-nav"><button type="button" data-action="screen-back" data-kind="${kind}" aria-label="返回上一个页面"><img src="./assets/figma-755/cozy-ai-device-back-v046.svg" alt="" aria-hidden="true" /></button><h1>CozyAI Device <small>Beta</small></h1><span></span></header>
+    <main class="cozy-chat-body"><div class="cozy-chat-hero"><img src="${COZY_AI_DEVICE_RABBIT}" alt="CozyAI rabbit" /><h2>${context ? "What would you like to understand?" : "How can I help with your Momcozy Air 1 ?"}</h2></div>
       ${context ? `<aside class="cozy-chat-context"><small>Insight context</small><strong>${context.context}</strong><button type="button" data-action="cozy-chat-clear-context" aria-label="移除洞察上下文">×</button></aside>` : ""}
       <div class="cozy-chat-thread" aria-live="polite">${messages.map(message => `<div class="cozy-chat-bubble ${message.role === "user" ? "is-user" : "is-ai"}">${escapeHtml(message.text)}</div>`).join("")}</div>
       <div class="cozy-chat-suggestions">${suggestions.map(question => `<button type="button" data-action="cozy-chat-suggest" data-question="${escapeHtml(question)}">${escapeHtml(question)}</button>`).join("")}</div>
     </main>
-    <form class="cozy-chat-composer" data-cozy-chat-form><div><button type="button" data-action="cozy-chat-context-info" aria-label="添加上下文">${icon("plus", "添加上下文")}</button><input name="cozy-message" type="text" autocomplete="off" placeholder="${context ? "Ask about this insight" : "Ask about your Momcozy V4"}" aria-label="发送给 CozyAI 的消息" /><button type="submit" aria-label="发送消息">${icon("arrow-up", "发送")}</button></div><small>AI-generated, not professional advice</small></form>
+    <form class="cozy-chat-composer" data-cozy-chat-form><div><button type="button" data-action="cozy-chat-context-info" aria-label="添加上下文"><img src="./assets/figma-755/cozy-ai-device-plus-v046.svg" alt="" aria-hidden="true" /></button><input name="cozy-message" type="text" autocomplete="off" placeholder="${context ? "Ask about this insight" : "Ask about your Momcozy Air 1"}" aria-label="发送给 CozyAI 的消息" /><button type="submit" aria-label="发送消息">${icon("arrow-up", "发送")}</button></div><small>AI-generated, not professional advice</small></form>
   </div></div>`;
 }
 
