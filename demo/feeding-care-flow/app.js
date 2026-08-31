@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.26";
+const VERSION = "0.4.27";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -849,15 +849,17 @@ function insightsHomeScreen(kind) {
       ${appStatusBar()}
       ${experienceHeader(kind, "Pumping", "open-device-home", "返回设备页")}
       <div class="insights-scroll-content">
-        <section class="daily-summary-card" aria-label="Daily pumping summary">
-          <div class="daily-summary-copy"><small>Daily summary</small><h2>Your pumping rhythm felt steadier today.</h2><p>Your sessions formed a more consistent, comfortable pattern that may be worth repeating tomorrow.</p></div>
-          <button type="button" class="daily-cozy-entry" data-action="open-cozy-chat" data-kind="${kind}">
-            <img src="${COZY_AI_LOGO}" alt="CozyAI rabbit" /><span><strong>Chat with CozyAI</strong><small>Ask about today's pumping data</small></span>${icon("chevron-right", "进入对话")}
-          </button>
-        </section>
         <article class="data-chart-card pumping-trend-card">
           <img class="insight-chart-image" src="./assets/figma-755/pumping-trend-v045.png" alt="Pumping Trend chart" />
-          ${insightCallout(kind, "trend", "Today is 12% above your 7-day average.")}
+          <section class="trend-summary" aria-label="Pumping Trend summary">
+            <small>Summary</small>
+            <h2>Your pumping rhythm felt steadier today.</h2>
+            <p>Today is 12% above your 7-day average. Your sessions formed a more consistent, comfortable pattern that may be worth repeating tomorrow.</p>
+            <div class="trend-summary-actions">
+              <button type="button" class="trend-cozy-entry" data-action="open-cozy-chat" data-kind="${kind}" data-context="trend"><img src="${COZY_AI_LOGO}" alt="CozyAI rabbit" /><span><strong>Chat with CozyAI</strong><small>Ask about this trend</small></span>${icon("chevron-right", "进入对话")}</button>
+              <button type="button" class="trend-more" data-action="open-insight-detail" data-kind="${kind}" data-insight="trend">More ${icon("chevron-right", "查看详情")}</button>
+            </div>
+          </section>
         </article>
         <article class="data-chart-card lactation-card">
           <img class="insight-chart-image" src="./assets/figma-755/lactation-v045.png" alt="Lactation level and mode data" />

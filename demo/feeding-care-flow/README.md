@@ -25,7 +25,7 @@ python3 -m http.server 4173
 5. 两端点击 `Start Pumping` 后会自动进入泌乳启动和佩戴检测；顶部统一显示两步的当前、通过和未开始状态。佩戴检测通过页停留 1 秒后显示开始吸乳 toast，并自动进入吸乳中，无需再次点击 `Start pumping`。控制页、检测页和吸乳中页面左上角返回均固定进入 `吸乳子首页`。
 6. 四种手动选项均属于 `Standard mode`；切换到 `Expression` 时顶部模式标题保持不变，仅更新图标选中态并在档位旁显示 `Best level test`。测试结果会回填为预设吸乳档位，完成测试后入口名称保持不变。
 7. 控制页顶部问号进入对应入口的 `V4 Setup` 设备助手页，设置进入独立的设备管理页，两者均可按真实历史返回；`Switch`、四种标准模式、1–15 档、灯光开关与 `Glow / Soft / Clear` 均可交互，并同步显示当前选中状态；所有主控、吸乳中、最佳档位和自定义分段页面均不再展示 Frequency。
-8. 数据页按 `Daily summary → 分项数据与证据 → 洞察详情 → CozyAI 咨询` 组织；首页只保留一个 CozyAI 主入口，Trend/Lactation 通过 `Key insight + More` 进入各自详情。
+8. 数据页不再展示独立的 Daily summary 卡片；每日总结、趋势依据、CozyAI 入口和 `More` 详情入口统一收拢到 Pumping Trend 卡片，Lactation 继续通过 `Key insight + More` 进入详情。
 9. CozyAI 对话页按 Figma 新节点 `961:55521` 展示粉白渐变、完整兔子角色、`Momcozy Air 1` 标题、三条推荐问题与底部输入区；同时保留推荐问题、自定义输入、即时回复、洞察上下文和真实来源返回。
 10. 数据页继续向下提供 Expert guidance 和紧凑的 Pumping moms 入口；已连接设备控制条按 Figma 节点 `817:50147` 以 178px 酒红至粉红渐变双行结构固定在手机底部，设备缩略图使用 V4 控制器实物图，并保留白色 Home Indicator。
 11. 设备连接、教学、吸乳中、记录完成、数据洞察与社区页面中所有明确可操作元素均有真实跳转、状态更新、弹层或即时反馈。

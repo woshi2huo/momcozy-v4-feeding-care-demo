@@ -597,18 +597,21 @@ button:disabled { cursor: default; opacity: .35; }
 
 .insights-home-canvas { aspect-ratio: 402 / 1400; background: #f9f7f5; }
 .insights-scroll-content { display: grid; gap: 16px; padding: 8px 16px 210px; }
-.daily-summary-card { overflow: hidden; padding: 19px 20px 20px; border: 1px solid #e9e7e8; border-radius: 22px; background: #fff; box-shadow: 0 2px 10px rgba(36,15,27,.025); }
-.daily-summary-copy small { display: block; margin-bottom: 8px; color: #3e0010; font-size: 11px; font-weight: 650; text-transform: uppercase; }
-.daily-summary-copy h2 { margin: 0 0 7px; color: #240f1b; font-size: 21px; font-weight: 550; line-height: 1.25; }
-.daily-summary-copy p { margin: 0; color: rgba(36,15,27,.6); font-size: 13px; line-height: 19px; }
-.daily-cozy-entry { width: 100%; min-height: 62px; display: grid; grid-template-columns: 42px minmax(0,1fr) 22px; align-items: center; gap: 10px; margin-top: 18px; padding: 9px 12px; border: 1px solid #efdfe3; border-radius: 16px; color: #240f1b; background: #fff8f9; text-align: left; }
-.daily-cozy-entry img { width: 42px; height: 42px; border: 1px solid rgba(160,0,50,.1); border-radius: 50%; object-fit: cover; box-shadow: 0 3px 10px rgba(36,15,27,.08); }
-.daily-cozy-entry span { min-width: 0; display: grid; gap: 2px; }
-.daily-cozy-entry strong { color: #3e0010; font-size: 13px; font-weight: 650; }
-.daily-cozy-entry small { color: rgba(36,15,27,.44); font-size: 10px; }
-.daily-cozy-entry svg { width: 18px; height: 18px; color: rgba(36,15,27,.35); }
 .data-chart-card { overflow: hidden; border: 1px solid #e9e7e8; border-radius: 22px; background: #fff; box-shadow: 0 2px 10px rgba(36,15,27,.025); }
 .insight-chart-image { display: block; width: 100%; height: auto; }
+.trend-summary { padding: 15px 18px 16px; border-top: 1px solid #e9e7e8; background: #fcfbfa; }
+.trend-summary > small { display: block; margin-bottom: 5px; color: #3e0010; font-size: 10px; font-weight: 650; text-transform: uppercase; }
+.trend-summary h2 { margin: 0 0 6px; color: #240f1b; font-size: 18px; font-weight: 550; line-height: 23px; }
+.trend-summary > p { margin: 0; color: rgba(36,15,27,.6); font-size: 12px; line-height: 18px; }
+.trend-summary-actions { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; margin-top: 14px; }
+.trend-cozy-entry { min-width: 0; min-height: 60px; display: grid; grid-template-columns: 42px minmax(0,1fr) 18px; align-items: center; gap: 9px; padding: 8px 10px; border: 1px solid #efdfe3; border-radius: 16px; color: #240f1b; background: #fff8f9; text-align: left; }
+.trend-cozy-entry img { width: 42px; height: 42px; border: 1px solid rgba(160,0,50,.1); border-radius: 50%; object-fit: cover; box-shadow: 0 3px 10px rgba(36,15,27,.08); }
+.trend-cozy-entry span { min-width: 0; display: grid; gap: 2px; }
+.trend-cozy-entry strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.trend-cozy-entry small { overflow: hidden; color: rgba(36,15,27,.44); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.trend-cozy-entry svg { width: 17px; height: 17px; color: rgba(36,15,27,.35); }
+.trend-more { height: 44px; display: flex; align-items: center; gap: 1px; padding: 0 2px 0 6px; border: 0; color: #3e0010; background: transparent; font-size: 11px; font-weight: 650; white-space: nowrap; }
+.trend-more svg { width: 14px; height: 14px; }
 .chart-insight { min-height: 66px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 14px; padding: 12px 16px 13px 20px; border-top: 1px solid #e9e7e8; background: #fcfbfa; }
 .chart-insight div { min-width: 0; }
 .chart-insight strong { display: block; margin-bottom: 2px; color: #3e0010; font-size: 11px; font-weight: 650; }

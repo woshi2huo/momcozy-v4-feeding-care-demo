@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.27 - 2026-08-31
+
+- 移除院端和居家端吸乳子首页顶部独立的 Daily summary 卡片，将其标题和总结文案合并到 Pumping Trend 卡片底部。
+- 在 Pumping Trend 总结区增加 CozyAI 入口并自动携带 Trend 洞察上下文，同时保留 `More` 详情入口。
+- 保持 Lactation、Expert guidance、Pumping moms 和底部设备控制条的现有内容与交互不变。
+
 ## 0.4.26 - 2026-08-31
 
 - 将院端和居家端共享的 CozyAI Device 页面同步到 Figma 新节点 `961:55521`：采用粉白渐变背景、完整粉色兔子角色、`Momcozy Air 1` 标题与 Beta 标识。
