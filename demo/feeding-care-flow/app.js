@@ -1,5 +1,5 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.24";
+const VERSION = "0.4.25";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
@@ -44,8 +44,8 @@ const sharedPostConnectionScreens = [
   { id: "pump-running", image: PUMPING_IMAGE, width: 375, height: 956, label: "吸乳中" },
   { id: "pump-finished", image: "home-05-finished.png", width: 402, height: 874, label: "记录奶量" },
   { id: "pump-logged", image: "home-06-logged.png", width: 393, height: 852, label: "记录成功" },
-  { id: "pump-dashboard", view: "insights-home", width: 402, height: 1400, label: "AI 吸乳子首页" },
-  { id: "device-home", view: "device-ai", width: 393, height: 852, label: "AI 设备页" },
+  { id: "pump-dashboard", view: "insights-home", width: 402, height: 1400, label: "吸乳子首页" },
+  { id: "device-home", view: "device-ai", width: 393, height: 852, label: "设备页" },
   { id: "insight-detail", view: "insight-detail", width: 402, height: 874, label: "AI 洞察详情" },
   { id: "cozy-chat", view: "cozy-chat", width: 402, height: 874, label: "CozyAI 对话" },
   { id: "community", view: "community", width: 402, height: 1040, label: "Pumping moms 群组" }
@@ -331,7 +331,7 @@ function controlHotspots(kind, modeAction = "control-open-mode-list", helpAction
 function screenBackHotspot(kind, screen) {
   const dashboardBackScreens = new Set(["pump-control", "pump-running", ...calibrationScreens.map(item => item.id)]);
   if (dashboardBackScreens.has(screen.id)) {
-    return hotspot("open-pump-dashboard", "返回 AI 吸乳子首页", 2.0, 4.0, 13.5, 7.0, `data-kind="${kind}"`);
+    return hotspot("open-pump-dashboard", "返回吸乳子首页", 2.0, 4.0, 13.5, 7.0, `data-kind="${kind}"`);
   }
   const backScreens = new Set(["pump-finished", "pump-dashboard"]);
   if (kind === "hospital") ["manual", "found", "scan", "code", "binding", "success"].forEach(id => backScreens.add(id));
@@ -764,9 +764,9 @@ function appStatusBar() {
   return `<div class="ai-statusbar"><strong>9:41</strong><span>${icon("signal", "蜂窝网络")}${icon("wifi", "无线网络")}${icon("battery-full", "电池")}</span></div>`;
 }
 
-function experienceHeader(kind, title, action = "screen-back") {
+function experienceHeader(kind, title, action = "screen-back", backLabel = "返回上一个页面") {
   return `<header class="ai-page-header">
-    <button type="button" data-action="${action}" data-kind="${kind}" aria-label="返回上一个页面">${icon("chevron-left", "返回")}</button>
+    <button type="button" data-action="${action}" data-kind="${kind}" aria-label="${backLabel}">${icon("chevron-left", "返回")}</button>
     <h1>${title}</h1><span></span>
   </header>`;
 }
@@ -808,7 +808,7 @@ function deviceAiScreen(kind) {
   return `<div class="screen-frame experience-frame" style="--content-width:393;--content-height:852">
     <div class="screen-scroll"><div class="screen-canvas device-ai-canvas">
       <img class="figma-screen device-ai-base" src="./assets/figma-755/${rollbackScreens0322.device.image}?v=${VERSION}" width="393" height="852" alt="我的设备" draggable="false" />
-      <button type="button" class="device-pump-link" data-action="open-insights" data-kind="${kind}" aria-label="打开 AI 吸乳子首页"></button>
+      <button type="button" class="device-pump-link" data-action="open-insights" data-kind="${kind}" aria-label="打开吸乳子首页"></button>
       <div class="device-ai-hotspots">${hotspot("app-add-device", "添加设备", 83.0, 6.0, 14.0, 7.0, `data-kind="${kind}"`)}${appTabHotspots(kind)}</div>
     </div></div>
   </div>`;
@@ -845,7 +845,7 @@ function insightsHomeScreen(kind) {
   return `<div class="screen-frame experience-frame insights-frame" style="--content-width:402;--content-height:1400">
     <div class="screen-scroll"><div class="screen-canvas insights-home-canvas">
       ${appStatusBar()}
-      ${experienceHeader(kind, "Pumping")}
+      ${experienceHeader(kind, "Pumping", "open-device-home", "返回设备页")}
       <div class="insights-scroll-content">
         <section class="daily-summary-card" aria-label="Daily pumping summary">
           <div class="daily-summary-copy"><small>Daily summary</small><h2>Your pumping rhythm felt steadier today.</h2><p>Your sessions formed a more consistent, comfortable pattern that may be worth repeating tomorrow.</p></div>
@@ -1288,6 +1288,13 @@ function handleAction(action, target) {
       pendingModeSwitch = null;
       guideFullscreen = false;
       durationPickerOpen = false;
+      setState({ [`${kind}Step`]: step, ...progressForStep(kind, step) });
+      break;
+    }
+    case "open-device-home": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const step = screens.findIndex(screen => screen.id === "device-home");
       setState({ [`${kind}Step`]: step, ...progressForStep(kind, step) });
       break;
     }
