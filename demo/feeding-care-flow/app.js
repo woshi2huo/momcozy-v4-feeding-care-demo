@@ -1,6 +1,26 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.4.27";
+const VERSION = "0.5.18";
 const STORAGE_KEY = `momcozy-figma-755-demo-v${VERSION}-${ENTRY}`;
+const PREVIOUS_STORAGE_KEYS = [
+  `momcozy-figma-755-demo-v0.5.17-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.16-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.15-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.14-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.13-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.12-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.11-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.10-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.9-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.8-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.7-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.6-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.5-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.4-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.3-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.2-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.1-${ENTRY}`,
+  `momcozy-figma-755-demo-v0.5.0-${ENTRY}`
+];
 const MAX_RECORDED_VOLUME = 300;
 const VOLUME_DRAG_STEP = 5;
 
@@ -11,12 +31,13 @@ const COZY_AI_DEVICE_RABBIT = "./assets/figma-755/cozy-ai-device-rabbit-v046.png
 const COZY_AI_DEVICE_BACKGROUND = "./assets/figma-755/cozy-ai-device-background-v046.svg";
 
 const calibrationScreens = [
-  { id: "check-initiation", image: CONTROL_IMAGE, width: 375, height: 956, label: "检查 1 · 泌乳启动", calibration: true },
-  { id: "check-fit", image: CONTROL_IMAGE, width: 375, height: 956, label: "检查 2 · 佩戴检测", calibration: true },
-  { id: "check-fit-passed", image: CONTROL_IMAGE, width: 375, height: 956, label: "检查 2 · 佩戴通过", calibration: true },
-  { id: "check-comfort", image: CONTROL_IMAGE, width: 375, height: 956, label: "最佳档位测试", calibration: true, bestLevelTest: true },
-  { id: "check-comfort-found", image: CONTROL_IMAGE, width: 375, height: 956, label: "最佳档位确认", calibration: true, bestLevelTest: true }
+  { id: "check-initiation", image: CONTROL_IMAGE, width: 375, height: 956, label: "法兰指引", calibration: true },
+  { id: "check-fit", image: CONTROL_IMAGE, width: 375, height: 956, label: "佩戴检测", calibration: true },
+  { id: "check-fit-passed", image: CONTROL_IMAGE, width: 375, height: 956, label: "佩戴检测结果", calibration: true },
+  { id: "check-comfort", image: CONTROL_IMAGE, width: 375, height: 956, label: "最佳吸力设置", calibration: true, bestLevelTest: true },
+  { id: "check-comfort-found", image: CONTROL_IMAGE, width: 375, height: 956, label: "继续吸乳", calibration: true, bestLevelTest: true }
 ];
+const pumpingWorkflowScreenIds = new Set(["check-fit", "check-fit-passed", "check-comfort", "check-comfort-found"]);
 
 // Kept as an explicit rollback reference; the PNG assets remain unchanged.
 const rollbackScreens0322 = {
@@ -90,8 +111,27 @@ const defaults = {
   controlAutoLockOn: true,
   flashlightOn: false,
   guideVideoPlaying: false,
-  comfortLevel: 4,
+  comfortLevel: 3,
+  bestLevel: 4,
   bestLevelSet: false,
+  firstSetupCompleted: false,
+  workflowScenario: "first",
+  flangeSlide: 0,
+  detectionCountdown: 5,
+  continueCountdown: 3,
+  wearLeft: "normal",
+  wearRight: "normal",
+  wearTestOutcome: "pass",
+  runtimeAlert: "",
+  deviceConnected: true,
+  commandFailure: false,
+  mcvGuideOpen: false,
+  candidateLevel: null,
+  candidateSeconds: 0,
+  candidateReady: false,
+  candidatePaused: false,
+  workflowSource: "start",
+  safetyStopped: false,
   controlMode: "Stimulation",
   customModeName: "Milk Collection Mode-01",
   customModeDescription: "Boost milk supply with a gentle segmented rhythm.",
@@ -119,6 +159,7 @@ const defaults = {
 
 let state = loadState();
 let transitionTimer = null;
+let candidateTimer = null;
 let holdTimer = null;
 let holdTarget = null;
 let activeVolumeSlider = null;
@@ -134,11 +175,25 @@ const stepHistory = { hospital: [], home: [] };
 
 function loadState() {
   try {
-    const saved = { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
+    const stored = localStorage.getItem(STORAGE_KEY) || PREVIOUS_STORAGE_KEYS.map(key => localStorage.getItem(key)).find(Boolean) || "{}";
+    const saved = { ...defaults, ...JSON.parse(stored) };
     saved.hospitalStep = Math.max(0, Math.min(hospitalScreens.length - 1, Number(saved.hospitalStep) || 0));
     saved.homeStep = Math.max(0, Math.min(homeScreens.length - 1, Number(saved.homeStep) || 0));
     saved.leftVolume = clampRecordedVolume(saved.leftVolume);
     saved.rightVolume = clampRecordedVolume(saved.rightVolume);
+    saved.comfortLevel = Math.max(1, Math.min(15, Number(saved.comfortLevel) || 3));
+    saved.bestLevel = Math.max(1, Math.min(15, Number(saved.bestLevel) || 4));
+    saved.detectionCountdown = Math.max(0, Math.min(5, Number(saved.detectionCountdown) || 0));
+    saved.continueCountdown = Math.max(0, Math.min(3, Number(saved.continueCountdown) || 0));
+    saved.candidateSeconds = Math.max(0, Math.min(60, Number(saved.candidateSeconds) || 0));
+    saved.candidateLevel = saved.candidateLevel == null ? null : Math.max(1, Math.min(15, Number(saved.candidateLevel) || saved.pumpLevel));
+    saved.workflowScenario = saved.workflowScenario === "daily" ? "daily" : "first";
+    saved.workflowSource = saved.workflowSource === "shortcut" ? "shortcut" : "start";
+    if (["Mixed", "Milk initiation"].includes(saved.controlMode)) saved.controlMode = "Stimulation";
+    if (saved.selectedManualMode === "Mixed") saved.selectedManualMode = "Stimulation";
+    const savedScreens = ENTRY === "hospital" ? hospitalScreens : homeScreens;
+    const savedStep = Math.max(0, Math.min(savedScreens.length - 1, saved[`${ENTRY}Step`]));
+    if (pumpingWorkflowScreenIds.has(savedScreens[savedStep]?.id)) saved.pumpRunning = true;
     return saved;
   } catch {
     return { ...defaults };
@@ -158,6 +213,79 @@ function setState(patch, message) {
   saveState();
   render();
   if (message) showToast(message);
+}
+
+function workflowContext(kind = ENTRY) {
+  const normalizedKind = kind === "hospital" ? "hospital" : "home";
+  const screens = normalizedKind === "hospital" ? hospitalScreens : homeScreens;
+  return { kind: normalizedKind, screens, key: `${normalizedKind}Step` };
+}
+
+function currentScreenId(kind = ENTRY) {
+  const { screens, key } = workflowContext(kind);
+  return screens[Math.max(0, Math.min(screens.length - 1, state[key]))]?.id || "";
+}
+
+function workflowStepPatch(screenId, kind = ENTRY) {
+  const { screens, key } = workflowContext(kind);
+  return { [key]: screens.findIndex(screen => screen.id === screenId) };
+}
+
+function wearResultForOutcome(outcome = state.wearTestOutcome) {
+  if (!state.deviceConnected || outcome === "unknown") return { wearLeft: "unknown", wearRight: "unknown" };
+  if (outcome === "left") return { wearLeft: "abnormal", wearRight: "normal" };
+  if (outcome === "right") return { wearLeft: "normal", wearRight: "abnormal" };
+  if (outcome === "both") return { wearLeft: "abnormal", wearRight: "abnormal" };
+  return { wearLeft: "normal", wearRight: "normal" };
+}
+
+function beginWearDetection(message = "开始完整佩戴检测") {
+  setState({
+    ...workflowStepPatch("check-fit"),
+    detectionCountdown: 5,
+    wearLeft: "checking",
+    wearRight: "checking",
+    mcvGuideOpen: false,
+    runtimeAlert: "",
+    safetyStopped: false,
+    pumpRunning: true,
+    pumpPaused: false
+  }, message);
+}
+
+function finishPreparation(message = "准备完成，吸乳已继续") {
+  if (currentScreenId() !== "check-comfort-found") return;
+  setState({
+    ...workflowStepPatch("pump-running"),
+    pumpRunning: true,
+    pumpPaused: false,
+    runtimeAlert: "",
+    safetyStopped: false,
+    firstSetupCompleted: state.firstSetupCompleted || state.workflowScenario === "first",
+    controlMode: "Expression",
+    candidateLevel: null,
+    candidateSeconds: 0,
+    candidateReady: false,
+    candidatePaused: false
+  }, message);
+}
+
+function isSafetyAlert(alert = state.runtimeAlert) {
+  return alert.startsWith("strong-") || alert.startsWith("pressure-");
+}
+
+function cancelCandidatePatch() {
+  return { candidateLevel: null, candidateSeconds: 0, candidateReady: false, candidatePaused: false };
+}
+
+function updateRunningLevel(delta) {
+  const pumpLevel = Math.max(1, Math.min(15, state.pumpLevel + delta));
+  if (pumpLevel === state.pumpLevel) return;
+  const running = currentScreenId() === "pump-running";
+  const candidatePatch = running && pumpLevel !== state.bestLevel
+    ? { candidateLevel: pumpLevel, candidateSeconds: 0, candidateReady: false, candidatePaused: state.pumpPaused || Boolean(state.runtimeAlert) }
+    : cancelCandidatePatch();
+  setState({ pumpLevel, ...candidatePatch });
 }
 
 function clampRecordedVolume(value) {
@@ -303,7 +431,7 @@ function trainingGuideHotspots(kind, final = false) {
 
 function readyHotspots(kind) {
   return [
-    hotspot("open-control", "开始使用 V4", 6.0, 49.5, 88.0, 6.0, `data-kind="${kind}"`),
+    hotspot("open-control-first-use", "开始使用 V4", 6.0, 49.5, 88.0, 6.0, `data-kind="${kind}"`),
     hotspot("ready-open-assistant", "打开 Cozy Assistant", 8.0, 72.7, 84.0, 7.0, `data-kind="${kind}"`),
     hotspot("ready-open-clean-guide", "打开 Clean & Assemble", 8.0, 80.3, 84.0, 7.0, `data-kind="${kind}"`),
     hotspot("ready-contact-support", "联系 Momcozy 支持", 8.0, 88.0, 84.0, 6.5)
@@ -331,6 +459,8 @@ function controlHotspots(kind, modeAction = "control-open-mode-list", helpAction
 }
 
 function screenBackHotspot(kind, screen) {
+  const mandatoryFirstUse = screen.calibration && state.workflowScenario === "first" && state.workflowSource === "start" && !state.firstSetupCompleted;
+  if (mandatoryFirstUse) return "";
   const dashboardBackScreens = new Set(["pump-control", "pump-running", ...calibrationScreens.map(item => item.id)]);
   if (dashboardBackScreens.has(screen.id)) {
     return hotspot("open-pump-dashboard", "返回吸乳子首页", 2.0, 4.0, 13.5, 7.0, `data-kind="${kind}"`);
@@ -467,97 +597,109 @@ function durationPickerMarkup(screen) {
     </section>`;
 }
 
+const workflowSteps = ["法兰指引", "佩戴检测", "最佳吸力", "继续吸乳"];
+const flangeSlides = [
+  { image: "flange-step-1-placeholder.svg", alt: "法兰指引第一步图片占位", title: "Firstly, choose the right insert size", copy: "Leave 1-2 mm of space between your nipple and the insert wall." },
+  { image: "flange-step-2-placeholder.svg", alt: "法兰指引第二步图片占位", title: "Secondly, Fit the insert into the flange", copy: "Push it in fully and align the marks." },
+  { image: "flange-step-3-placeholder.svg", alt: "法兰指引第三步图片占位", title: "Thirdly, Position the flange correctly", copy: "Ensure the nipple centered in the flange tunnel, while the flange fits closely against the breast without tightly pressing." }
+];
+
+function workflowStepIndex(screenId) {
+  return { "check-initiation": 0, "check-fit": 1, "check-fit-passed": 1, "check-comfort": 2, "check-comfort-found": 3 }[screenId] ?? 0;
+}
+
 function calibrationStepper(screenId) {
-  const statesByScreen = {
-    "check-initiation": ["current", "future"],
-    "check-fit": ["complete", "current"],
-    "check-fit-passed": ["complete", "complete"]
+  const active = workflowStepIndex(screenId);
+  return `<div class="steps" aria-label="吸乳准备流程">${workflowSteps.map((label, index) => {
+    const status = index < active ? "done" : index === active ? "active" : "";
+    return `<div class="step ${status}"><b>${index < active ? "✓" : index + 1}</b>${label}</div>`;
+  }).join("")}</div>`;
+}
+
+function wearCard(side, status) {
+  const labels = {
+    checking: ["检测中", "正在确认佩戴与气密状态"],
+    normal: ["检测通过", "佩戴稳定，气密正常"],
+    abnormal: ["佩戴异常", "请重新佩戴并检查气密"],
+    unknown: ["状态未知", "请检查连接后重新检测"]
   };
-  const states = statesByScreen[screenId];
-  if (!states) {
-    const found = screenId === "check-comfort-found";
-    return `<div class="best-level-kicker ${found ? "is-set" : ""}"><span>Optional · ${found ? "Best level set" : "Best level test"}</span></div>`;
-  }
-  const labels = ["Initiation", "Fit check"];
-  const track = states.map((status, index) => {
-    const step = `<span class="check-step ${status}" aria-current="${status === "current" ? "step" : "false"}">${index + 1}</span>`;
-    if (index === states.length - 1) return step;
-    return `${step}<span class="check-connector ${status === "complete" ? "complete" : ""}"></span>`;
-  }).join("");
-  const text = labels.map((label, index) => `<span class="check-step-label ${states[index]}">${label}</span>`).join("");
-  return `<div class="check-stepper" aria-label="设备检查进度"><div class="check-step-track">${track}</div><div class="check-step-labels">${text}</div></div>`;
+  const [title, copy] = labels[status] || labels.unknown;
+  const className = status === "normal" ? "passed" : status === "abnormal" ? "is-abnormal" : status === "checking" ? "is-checking" : "is-unknown";
+  return `<div class="fit-box ${className}"><div class="fit-circle">${side === "left" ? "L" : "R"}</div><strong>${side === "left" ? "左侧" : "右侧"}${title}</strong><small>${copy}</small></div>`;
 }
 
 function calibrationBody(screen) {
-  switch (screen.id) {
-    case "check-initiation":
-      return `<div class="check-body initiation-body">
-        <div class="check-reading"><strong>00:03</strong><span>Level 3</span></div>
-        <div class="check-progress"><span style="--progress:22%"></span></div>
-        <p class="check-progress-copy">Preparing for fit detection...</p>
-      </div>`;
-    case "check-fit":
-      return `<div class="check-body fit-body">
-        <div class="fit-cards">
-          <div class="fit-card checking"><strong>L</strong><span>Checking...</span></div>
-          <div class="fit-card checking"><strong>R</strong><span>Checking...</span></div>
-        </div>
-        <div class="check-progress"><span style="--progress:64%"></span></div>
-        <p class="check-progress-copy">Checking seal stability...</p>
-      </div>`;
-    case "check-fit-passed":
-      return `<div class="check-body passed-body">
-        <div class="fit-cards">
-          <div class="fit-card passed"><strong>L</strong><span>Good fit</span></div>
-          <div class="fit-card passed"><strong>R</strong><span>Good fit</span></div>
-        </div>
-      </div>`;
-    case "check-comfort":
-      return `<div class="check-body comfort-body">
-        <div class="comfort-control"><span>Current level</span><div><strong>${state.comfortLevel}</strong><small>of 15</small><button type="button" data-action="comfort-down" aria-label="降低负压">−</button><button type="button" class="primary" data-action="comfort-up" aria-label="提高负压">+</button></div></div>
-        <div class="comfort-tip positive"><strong>Still comfortable?</strong><span>Press + until mildly uncomfortable</span></div>
-        <div class="comfort-tip caution"><strong>Mildly uncomfortable?</strong><span>Press − once to return to comfort</span></div>
-      </div>`;
-    case "check-comfort-found":
-      return `<div class="check-body found-body">
-        <div class="comfort-result"><strong>${state.comfortLevel}</strong><span>Set level</span></div>
-        <div class="comfort-sides"><span><b>L</b> Level ${state.comfortLevel}</span><span><b>R</b> Level ${state.comfortLevel}</span></div>
-      </div>`;
-    default:
-      return "";
+  const daily = state.workflowScenario === "daily";
+  if (screen.id === "check-initiation") {
+    const slide = flangeSlides[Math.max(0, Math.min(flangeSlides.length - 1, state.flangeSlide))];
+    const isFinalFlangeSlide = state.flangeSlide === flangeSlides.length - 1;
+    const startNote = isFinalFlangeSlide ? `<p class="flange-start-note">点击后设备将开始吸乳，并依次完成佩戴检测与最佳吸力设置；完成后继续吸乳。</p>` : "";
+    return `<div class="sheet-inner flange-step-inner">${calibrationStepper(screen.id)}<h3>正确选择、安装并佩戴法兰</h3><div class="flange-image-wrap"><span class="flange-counter">${state.flangeSlide + 1} / ${flangeSlides.length}</span><div class="flange-image-frame"><img src="./assets/figma-755/${slide.image}" alt="${slide.alt}" /></div></div><div class="flange-slide-copy"><strong>${slide.title}</strong><p>${slide.copy}</p></div><div class="flange-dots">${flangeSlides.map((_, index) => `<button type="button" class="flange-dot ${index === state.flangeSlide ? "active" : ""}" data-action="set-flange-slide" data-value="${index}" aria-label="查看法兰指引第 ${index + 1} 页"></button>`).join("")}</div><div class="help-links"><button type="button">查看测量方法</button><i></i><button type="button">查看安装视频</button><i></i><button type="button">无法确认尺寸</button></div>${startNote}<div class="flange-actions ${state.flangeSlide === 0 ? "single" : ""} ${isFinalFlangeSlide ? "with-start-note" : ""}"><button type="button" class="secondary" data-action="flange-prev">上一步</button><button type="button" class="primary" data-action="flange-next">${isFinalFlangeSlide ? "开始吸乳并检测佩戴" : "下一步"}</button></div></div>`;
   }
+  if (screen.id === "check-fit") {
+    const progress = Math.max(0, Math.min(100, ((5 - state.detectionCountdown) / 5) * 100));
+    return `<div class="sheet-inner">${calibrationStepper(screen.id)}<h3>正在检测佩戴与气密状态</h3><p class="sheet-copy">设备已以刺激模式 3 档启动。请保持当前姿势，等待检测完成。</p><div class="fit-grid">${wearCard("left", "checking")}${wearCard("right", "checking")}</div><div class="fit-progress"><i style="width:${progress}%"></i></div><div class="fit-footer">请保持当前姿势，检测期间无需操作</div><div class="fit-auto-status" aria-live="polite"><i></i><strong>自动检测中</strong><span>倒计时 <b>${state.detectionCountdown}</b> 秒</span></div></div>`;
+  }
+  if (screen.id === "check-fit-passed") {
+    const passed = state.wearLeft === "normal" && state.wearRight === "normal";
+    const statusTitle = passed ? "佩戴与气密状态正常" : state.wearLeft === "unknown" || state.wearRight === "unknown" ? "暂时无法完成检测" : "检测到佩戴异常";
+    const statusCopy = passed ? "左右两侧均已通过检测" : "调整异常侧后，需要重新完整检测 5 秒";
+    return `<div class="sheet-inner">${calibrationStepper(screen.id)}<h3>佩戴检测结果</h3><p class="sheet-copy">左右两侧分别显示本次检测结果；检测异常时不会自动进入下一步。</p><div class="fit-grid">${wearCard("left", state.wearLeft)}${wearCard("right", state.wearRight)}</div><div class="fit-progress"><i class="${passed ? "passed" : "abnormal"}" style="width:100%"></i></div>${passed ? `<div class="fit-auto-status passed"><i>✓</i><strong>${statusTitle}</strong><span>${statusCopy}</span></div>` : `<button type="button" class="fit-auto-status is-action" data-action="retry-wear-detection"><i>↻</i><strong>${statusTitle}</strong><span>${statusCopy}</span></button>`}</div>`;
+  }
+  if (screen.id === "check-comfort") {
+    if (daily && state.bestLevelSet) return "";
+    if (state.mcvGuideOpen) return `<div class="sheet-inner"><div class="guide-nav"><button type="button" class="guide-back" data-action="close-mcv-guide">‹</button><strong>最佳吸力设置说明</strong></div><div class="kicker">设置原则</div><h3>吸力并非越高越好</h3><p class="sheet-copy">最佳吸力是刺激模式下，在无疼痛或明显不适的前提下，可以持续使用的最高舒适档位。</p><div class="paused-badge">Ⅱ 查看说明期间已暂停调节，当前 ${state.comfortLevel} 档设置进度已保留</div><div class="guide-cards"><div class="guide-card"><b>1</b><div><strong>从舒适档位开始</strong><span>保持放松并确认佩戴稳定，当前档位应无疼痛或明显拉扯。</span></div></div><div class="guide-card"><b>2</b><div><strong>每次只提高一级</strong><span>点击“＋”后充分感受变化，确认舒适后再继续提高。</span></div></div><div class="guide-card"><b>3</b><div><strong>轻微不适时降低一级</strong><span>一旦接近不适，请点击“－”返回上一舒适档位。</span></div></div></div><div class="guide-safety">如出现疼痛、麻木、乳头颜色明显变化或佩戴松动，请立即停止设置，并检查法兰尺寸与佩戴状态。</div><button type="button" class="primary" data-action="close-mcv-guide">返回最佳吸力设置</button></div>`;
+    const shortcut = state.workflowSource === "shortcut";
+    return `<div class="sheet-inner">${shortcut ? '<div class="kicker">最佳吸力</div>' : calibrationStepper(screen.id)}<h3>${shortcut ? "调整最佳吸力" : "设置你的最佳吸力"}</h3><p class="sheet-copy">每次仅调整一级，并留意身体感受。如感到疼痛，请立即降低档位或暂停吸乳。</p><button type="button" class="mcv-help-link" data-action="open-mcv-guide">了解最佳吸力及设置方法 <span>›</span></button><div class="mcv-panel"><div class="mcv-label">当前刺激模式档位</div><div class="mcv-value"><strong>${state.comfortLevel}</strong><span>/ 15</span></div><div class="adjust-list"><div class="adjust-row green"><button type="button" class="mcv-btn plus" data-action="comfort-up" aria-label="提高吸力">＋</button><div class="adjust-copy"><strong>当前仍然舒适？</strong><span>提高一级，继续观察身体感受。</span></div></div><div class="adjust-row peach"><button type="button" class="mcv-btn" data-action="comfort-down" aria-label="降低吸力">−</button><div class="adjust-copy"><strong>出现轻微不适？</strong><span>降低一级，回到舒适档位。</span></div></div></div></div>${state.commandFailure ? '<div class="paused-badge">设备未确认档位生效，请重试。</div>' : ""}<button type="button" class="primary" data-action="save-best-suction">${shortcut ? "保存为新的最佳吸力" : "确认并保存当前档位"}</button>${shortcut ? '<button type="button" class="secondary" data-action="calibration-close">取消调整，继续吸乳</button>' : ""}</div>`;
+  }
+  if (screen.id === "check-comfort-found") return `<div class="sheet-inner">${calibrationStepper(screen.id)}<h3>准备流程已完成</h3><p class="sheet-copy">法兰指引、佩戴检测和最佳吸力设置均已完成，设备将继续吸乳。</p><div class="continue-summary"><i>✓</i><div><strong>持续监测佩戴与气密状态</strong><span>吸乳过程中，系统会持续监测左右两侧；如检测到异常，将及时提醒你调整。</span></div></div><div class="countdown-note"><span>${state.continueCountdown}</span> 秒后自动关闭</div><button type="button" class="primary" data-action="workflow-continue-now">确认并继续吸乳</button></div>`;
+  return "";
 }
 
-function calibrationFooter(screen) {
-  switch (screen.id) {
-    case "check-comfort":
-      return `<button type="button" class="check-primary-action" data-action="calibration-next">Confirm this level</button><button type="button" class="check-text-action" data-action="calibration-close">Exit setup</button>`;
-    case "check-comfort-found":
-      return `<button type="button" class="check-text-action" data-action="calibration-test-again">Test again</button><button type="button" class="check-primary-action" data-action="calibration-use-level">Return to control</button>`;
-    default:
-      return "";
+function workflowCardSteps(active) {
+  return `<div class="daily-workflow-steps">${workflowSteps.map((label, index) => `<div class="daily-workflow-step ${index < active ? "done" : index === active ? "active" : ""}"><b>${index < active ? "✓" : index + 1}</b>${label}</div>`).join("")}</div>`;
+}
+
+function workflowPumpTimeMarkup() {
+  return `<div class="workflow-pump-time" aria-label="Pumping Time: 13m 30s"><i></i><span>Pumping Time: 13m 30s</span></div>`;
+}
+
+function dailyPreparationMarkup(screen) {
+  const active = workflowStepIndex(screen.id);
+  let title = "正在确认法兰指引";
+  let copy = "无需操作，系统将自动完成准备";
+  let action = "";
+  if (screen.id === "check-fit") {
+    title = "正在检测佩戴状态";
+    copy = `左右侧检测中，请保持当前姿势，预计 ${state.detectionCountdown} 秒完成`;
+  } else if (screen.id === "check-fit-passed") {
+    const passed = state.wearLeft === "normal" && state.wearRight === "normal";
+    title = passed ? "佩戴检测已完成" : "佩戴检测已暂停";
+    copy = passed ? "左右侧状态正常，正在进入最佳吸力" : "请先重新佩戴异常侧；恢复后将从头检测";
+    action = passed ? "" : "retry-wear-detection";
+  } else if (screen.id === "check-comfort") {
+    title = state.commandFailure ? "最佳吸力应用失败" : `正在应用最佳吸力 ${state.bestLevel} 档`;
+    copy = state.commandFailure ? "未收到设备确认，点击后重试" : "设备确认后将自动继续";
+    action = state.commandFailure ? "save-best-suction" : "";
+  } else if (screen.id === "check-comfort-found") {
+    title = "准备流程已完成";
+    copy = `${state.continueCountdown} 秒后自动继续吸乳`;
+    action = "workflow-continue-now";
   }
+  const status = action
+    ? `<button type="button" class="daily-workflow-status is-action" data-action="${action}"><i></i><span>${copy}</span></button>`
+    : `<div class="daily-workflow-status"><i></i><span>${copy}</span></div>`;
+  return `<section class="standalone-workflow-stage" aria-label="自动吸乳准备流程"><div class="daily-workflow"><div class="daily-workflow-head"><span>自动准备中</span><strong>${title}</strong></div>${workflowCardSteps(active)}${status}</div>${workflowPumpTimeMarkup()}</section>`;
 }
 
 function calibrationMarkup(screen, motion = {}) {
   if (!screen.calibration) return "";
+  if (state.workflowScenario === "daily") return dailyPreparationMarkup(screen);
   const motionClasses = [motion.entering ? "is-entering" : "", motion.stepChanging ? "is-step-changing" : ""].filter(Boolean).join(" ");
-  const headings = {
-    "check-initiation": ["Initiation", "Running the milk-initiation rhythm"],
-    "check-fit": ["Fit check", "Keep still while both sides are checked."],
-    "check-fit-passed": ["Fit check passed", "Both pumps have a stable seal."],
-    "check-comfort": ["Find your best level", "Adjust slowly and stop if it hurts."],
-    "check-comfort-found": ["Best level found", "Your preferred expression suction is ready."]
-  };
-  const [title, subtitle] = headings[screen.id];
-  return `<div class="calibration-shade ${motion.entering ? "is-entering" : ""}" aria-hidden="true"></div>
-    <section class="calibration-modal ${screen.id} ${motionClasses}" role="dialog" aria-modal="true" aria-label="${title}">
-      <button type="button" class="calibration-close" data-action="calibration-close" aria-label="关闭检查">${icon("x", "关闭检查")}</button>
-      ${calibrationStepper(screen.id)}
-      <header class="check-heading"><h1>${title}</h1><p>${subtitle}</p></header>
-      ${calibrationBody(screen)}
-      <footer class="check-footer">${calibrationFooter(screen)}</footer>
-    </section>`;
+  const close = state.workflowSource === "shortcut" && !state.mcvGuideOpen
+    ? '<button type="button" class="close" data-action="calibration-close" aria-label="关闭流程">×</button>'
+    : "";
+  return `<div class="standalone-scrim ${motion.entering ? "is-entering" : ""}" aria-hidden="true"></div><section class="sheet onboarding-flow standalone-workflow-sheet ${screen.id} ${motionClasses}" role="dialog" aria-modal="true" aria-label="吸乳准备流程">${close}${calibrationBody(screen)}</section>`;
 }
 
 function modeStatusBar() {
@@ -599,8 +741,7 @@ function modeListContent(interactive = true) {
   const createAction = interactive ? 'data-action="mode-start-create"' : "";
   const manualModes = [
     ["Stimulation", "Gentle and comfortable", "heart", "activity"],
-    ["Expression", "Fast-paced and intense", "droplet", ""],
-    ["Mixed", "Fast-paced and intense", "droplet", ""]
+    ["Expression", "Fast-paced and intense", "droplet", ""]
   ];
   return `<div class="mode-list-content">
     <p class="mode-list-kicker">Manual</p>
@@ -958,10 +1099,8 @@ function controlOverlayMarkup(kind, screen) {
     </div>`;
   } else {
     const modes = [
-      ["Stimulation", "Stimulate", "heart", "Gentle rhythm for milk release"],
-      ["Expression", "Expression", "droplet", "Steady expression rhythm"],
-      ["Mixed", "Mixed", "blend", "Alternates stimulation and expression"],
-      ["Milk initiation", "Milk initiation", "waves", "Supports the first letdown"]
+      ["Stimulation", "Stimulation", "heart", "Gentle rhythm for milk release"],
+      ["Expression", "Expression", "droplet", "Steady expression rhythm"]
     ];
     body = `<p class="control-mode-note">Choose a standard pumping mode for this session.</p><div class="control-mode-sheet-list">${modes.map(([value, label, modeIcon, copy]) => `<button type="button" class="${state.controlMode === value ? "selected" : ""}" data-action="control-sheet-select-mode" data-value="${value}" aria-pressed="${state.controlMode === value}"><span>${icon(modeIcon, label)}</span><span><strong>${label}</strong><small>${copy}</small></span>${icon(state.controlMode === value ? "check" : "chevron-right", state.controlMode === value ? "已选择" : "选择")}</button>`).join("")}</div>`;
     footerLabel = "Close";
@@ -975,25 +1114,68 @@ function controlOverlayMarkup(kind, screen) {
     </section>`;
 }
 
+function runningWearStatus(side) {
+  const status = side === "left" ? state.wearLeft : state.wearRight;
+  const labels = { normal: "正常", abnormal: "异常", unknown: "未知", checking: "检测中" };
+  const className = status === "normal" ? "" : status === "abnormal" ? "is-abnormal" : "is-checking";
+  return `<span class="${className}"><i></i>${side === "left" ? "左侧" : "右侧"}${labels[status] || labels.unknown}</span>`;
+}
+
+function runningWorkflowMarkup(screen) {
+  if (screen.id !== "pump-running") return "";
+  const stopped = state.safetyStopped || state.runtimeAlert === "connection";
+  const title = state.runtimeAlert === "connection"
+    ? "佩戴状态暂时未知"
+    : state.runtimeAlert.startsWith("strong-")
+      ? "吸乳已暂停，等待重新佩戴"
+      : stopped
+        ? "吸乳已安全终止"
+        : "吸乳进行中";
+  const summaryClass = isSafetyAlert() ? "is-danger" : "";
+  return `<section class="standalone-workflow-stage running" aria-label="吸乳中 Workflow"><div class="daily-workflow monitoring ${stopped ? "stopped" : ""}"><div class="daily-workflow-head"><span>准备已完成</span><strong>${title}</strong></div>${workflowCardSteps(3)}<div class="workflow-wear-summary ${summaryClass}"><span class="workflow-wear-live"><i></i>佩戴持续检测中</span>${runningWearStatus("left")}${runningWearStatus("right")}</div></div>${workflowPumpTimeMarkup()}</section>`;
+}
+
+function runtimeAlertMarkup(screen) {
+  if (screen.id !== "pump-running" || !state.runtimeAlert) return "";
+  const [type, sideValue] = state.runtimeAlert.split("-");
+  const side = sideValue === "right" ? "右侧" : "左侧";
+  if (type === "weak") return `<section class="weak-alert-banner show" role="alert"><i>!</i><button type="button" class="weak-alert-main" data-action="resolve-runtime-alert"><strong>检测到${side}漏气</strong><span>佩戴检测发现异常，点击查看调整方法</span></button><span class="weak-alert-chevron">›</span><button type="button" class="weak-alert-close" data-action="resolve-runtime-alert" aria-label="关闭提醒">×</button></section>`;
+  if (type === "strong") return `<div class="standalone-scrim runtime" aria-hidden="true"></div><section class="sheet standalone-workflow-sheet safety-sheet" role="alertdialog" aria-modal="true"><div class="sheet-inner"><div class="safety-mark leak-stop">!</div><h3>检测到${side}持续漏气<br />请重新佩戴</h3><p class="sheet-copy">设备已停止吸乳输出。请检查法兰贴合、配件安装和导管连接。</p><div class="stop-result"><i>■</i><div><strong>等待重新佩戴</strong><span>完成重新佩戴后，点击下方按钮；设备将重新启动吸乳并检测佩戴状态。</span></div></div><button type="button" class="primary" data-action="restart-after-safety">已重新佩戴，继续吸乳</button><button type="button" class="secondary" data-action="finish-pump">结束本次吸乳</button></div></section>`;
+  if (type === "pressure") return `<div class="standalone-scrim runtime" aria-hidden="true"></div><section class="sheet standalone-workflow-sheet safety-sheet" role="alertdialog" aria-modal="true"><div class="sheet-inner"><div class="safety-mark">!</div><div class="kicker">安全保护 · 已停止输出</div><h3>检测到${side}压力过高</h3><p class="sheet-copy">设备已立即停止吸乳并泄压。请重新佩戴并检查法兰、导管与连接位置。</p><button type="button" class="primary" data-action="restart-after-safety">重新检测并尝试恢复</button><button type="button" class="secondary" data-action="finish-pump">结束本次吸乳</button></div></section>`;
+  if (state.runtimeAlert === "connection") return `<div class="standalone-scrim runtime" aria-hidden="true"></div><section class="sheet standalone-workflow-sheet safety-sheet" role="alertdialog" aria-modal="true"><div class="sheet-inner"><div class="recovery-mark">⌁</div><div class="kicker">设备连接已中断</div><h3>佩戴状态暂时未知</h3><p class="sheet-copy">无法继续确认实时佩戴状态，已停止沿用上一次检测结果。</p><div class="recovery-status">恢复连接后，需要重新完成左右佩戴检测。</div><button type="button" class="primary" data-action="reconnect-and-redetect">恢复连接并重新检测</button></div></section>`;
+  return "";
+}
+
+function candidateBestLevelMarkup(screen) {
+  if (screen.id !== "pump-running" || state.candidateLevel == null) return "";
+  const ready = state.candidateReady || state.candidateSeconds >= 60;
+  if (!ready) return "";
+  return `<div class="standalone-scrim runtime" aria-hidden="true"></div><section class="sheet standalone-workflow-sheet candidate-sync-sheet" role="dialog" aria-modal="true" aria-label="更新最佳吸力"><button type="button" class="close" data-action="candidate-session-only" aria-label="关闭">×</button><div class="sheet-inner"><div class="kicker">刺激模式 · 当前档位已生效</div><h3>是否将 ${state.candidateLevel} 档更新为最佳吸力？</h3><p class="sheet-copy">设备当前以 ${state.candidateLevel} 档运行，已保存的最佳吸力仍为 ${state.bestLevel} 档。当前档位已稳定使用 1 分钟，系统不会自动保存。</p><div class="sync-compare"><div class="sync-level"><span>已保存最佳吸力</span><strong>${state.bestLevel} 档</strong></div><div class="sync-arrow">→</div><div class="sync-level new"><span>本次稳定档位</span><strong>${state.candidateLevel} 档</strong></div></div><div class="sync-note">当前调档已立即生效。只有确认更新后，后续进入刺激模式时才会优先使用该档位。</div><div class="sync-actions"><button type="button" class="primary" data-action="candidate-update-best">更新为 ${state.candidateLevel} 档</button><button type="button" class="secondary" data-action="candidate-session-only">仅本次使用</button></div></div></section>`;
+}
+
+function workflowDemoPanel() {
+  const outcomes = [["pass", "双侧通过"], ["left", "左侧异常"], ["right", "右侧异常"], ["both", "双侧异常"], ["unknown", "状态未知"]];
+  return `<section class="workflow-demo-panel" aria-label="流程评审控制"><header><strong>流程控制</strong><small>仅用于 Demo 评审</small></header><div class="workflow-demo-help"><span>1. 先选择首次或日常场景</span><span>2. 再设置下一次检测结果</span><span>3. 吸乳中可触发异常与设备状态</span></div><div class="workflow-demo-row"><span>启动场景</span><div><button type="button" class="${state.workflowScenario === "first" ? "active" : ""}" data-action="set-workflow-scenario" data-value="first">首次使用</button><button type="button" class="${state.workflowScenario === "daily" ? "active" : ""}" data-action="set-workflow-scenario" data-value="daily">日常吸乳</button></div></div><div class="workflow-demo-row"><span>下次检测结果</span><div>${outcomes.map(([value, label]) => `<button type="button" class="${state.wearTestOutcome === value ? "active" : ""}" data-action="set-wear-outcome" data-value="${value}">${label}</button>`).join("")}</div></div><div class="workflow-demo-row"><span>吸乳中异常</span><div><button type="button" data-action="set-runtime-alert" data-value="weak-left">弱提醒</button><button type="button" data-action="set-runtime-alert" data-value="strong-left">严重漏气</button><button type="button" data-action="set-runtime-alert" data-value="pressure-left">压力过高</button><button type="button" data-action="set-runtime-alert" data-value="normal">恢复正常</button></div></div><div class="workflow-demo-row"><span>设备与候选</span><div><button type="button" class="${state.commandFailure ? "active" : ""}" data-action="toggle-command-failure">${state.commandFailure ? "关闭指令失败" : "模拟指令失败"}</button><button type="button" data-action="set-device-connection" data-value="${state.deviceConnected ? "offline" : "online"}">${state.deviceConnected ? "模拟断连" : "恢复连接"}</button><button type="button" data-action="candidate-fast-forward" ${state.candidateLevel == null || state.candidateReady ? "disabled" : ""}>快进 1 分钟</button></div></div></section>`;
+}
+
 function controlSettingsMarkup(kind, screen) {
-  if (!["pump-control", "pump-running"].includes(screen.id)) return "";
-  const pumping = screen.id === "pump-running";
+  const dailyWorkflow = Boolean(screen.calibration && state.workflowScenario === "daily");
+  if (!["pump-control", "pump-running"].includes(screen.id) && !dailyWorkflow) return "";
+  const pumping = screen.id === "pump-running" || dailyWorkflow;
   const modes = [
-    ["Stimulation", "Stimulate", "heart"],
-    ["Expression", "Expression", "droplet"],
-    ["Mixed", "Mixed", "blend"],
-    ["Milk initiation", "Milk initiation", "waves"]
+    ["Stimulation", "Stimulation", "heart"],
+    ["Expression", "Expression", "droplet"]
   ];
-  const selector = `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" data-action="control-select-mode" data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`;
-  const bestLevelEntry = !pumping && state.controlMode === "Expression"
-    ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="测试最佳泌乳档位"><span>Best level test</span></button>`
+  const selector = `<div class="control-mode-selector" aria-label="吸乳模式">${modes.map(([name, label, modeIcon]) => `<button type="button" class="${state.controlMode === name ? "active" : ""}" ${dailyWorkflow ? "" : 'data-action="control-select-mode"'} data-value="${name}" aria-pressed="${state.controlMode === name}"><span>${icon(modeIcon, label)}</span><small>${label}</small></button>`).join("")}</div>`;
+  const bestLevelEntry = !pumping && ["Stimulation", "Expression"].includes(state.controlMode)
+    ? `<button type="button" class="control-best-level" data-action="open-best-level" aria-label="设置最佳吸力"><span>最佳吸力 ${state.bestLevelSet ? `${state.bestLevel} 档` : "设置"}</span></button>`
     : "";
-  const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" data-action="control-select-light" data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
+  const lightOptions = ["Glow", "Soft", "Clear"].map(value => `<button type="button" class="${state.controlLight === value ? "active" : ""}" ${dailyWorkflow ? "" : 'data-action="control-select-light"'} data-value="${value}" aria-pressed="${state.controlLight === value}" ${state.controlLightOn ? "" : "disabled"}>${value}</button>`).join("");
   return `${selector}
     <span class="control-level-summary" aria-hidden="true">${state.pumpLevel}</span><span class="control-level-value" aria-live="polite"><strong>${state.pumpLevel}</strong><small>/ 15</small></span>${bestLevelEntry}
     <span class="control-secondary-settings-mask" aria-hidden="true"></span><span class="control-light-card-bg" aria-hidden="true"></span><strong class="control-light-label">Light</strong>
     <span class="control-light-summary" aria-live="polite">${state.controlLightOn ? escapeHtml(state.controlLight) : "Off"}</span>
-    <button type="button" class="control-light-toggle ${state.controlLightOn ? "on" : ""}" data-action="control-toggle-light" aria-label="${state.controlLightOn ? "关闭灯光" : "打开灯光"}" aria-pressed="${state.controlLightOn}"><i></i></button>
+    <button type="button" class="control-light-toggle ${state.controlLightOn ? "on" : ""}" ${dailyWorkflow ? "" : 'data-action="control-toggle-light"'} aria-label="${state.controlLightOn ? "关闭灯光" : "打开灯光"}" aria-pressed="${state.controlLightOn}"><i></i></button>
     <div class="control-light-selector ${state.controlLightOn ? "" : "disabled"}" aria-label="Light">${lightOptions}</div>`;
 }
 
@@ -1003,6 +1185,8 @@ function screenMarkup(kind) {
   const screen = screens[step];
   if (screen.view) return experienceScreenMarkup(kind, screen);
   if (screen.custom) return customModeScreenMarkup(screen);
+  const dailyWorkflowBase = Boolean(screen.calibration && state.workflowScenario === "daily");
+  const displayImage = dailyWorkflowBase ? PUMPING_IMAGE : screen.image;
   const pageHotspots = kind === "hospital" ? hospitalHotspots(screen) : homeHotspots(screen);
   const hotspots = `${screenBackHotspot(kind, screen)}${pageHotspots}`;
   const digit = screen.id === "code" && state.codeDigit
@@ -1013,20 +1197,23 @@ function screenMarkup(kind) {
   const durationValue = sessionFinished
     ? `<span class="session-duration-value" aria-live="polite">${escapeHtml(state.sessionDuration)}</span>`
     : "";
-  const deviceOverlay = screen.image === "home-07-dashboard.png"
+  const deviceOverlay = displayImage === "home-07-dashboard.png"
     ? `<span class="dashboard-device-frame" aria-hidden="true"><img src="./assets/figma-755/home-pump-control-device.png" width="182" height="138" alt="" draggable="false" /></span>`
     : "";
-  const pumpControlButtonMask = screen.image === CONTROL_IMAGE
+  const pumpControlButtonMask = displayImage === CONTROL_IMAGE
     ? `<span class="pump-control-native-button-mask" aria-hidden="true"></span>`
     : "";
   const controlSettings = controlSettingsMarkup(kind, screen);
-  const finishAction = screen.id === "pump-running" ? "finish-pump" : "";
+  const workflowPumping = pumpingWorkflowScreenIds.has(screen.id);
+  const runtimeStopped = screen.id === "pump-running" && (state.safetyStopped || state.runtimeAlert === "connection");
+  const finishAction = (screen.id === "pump-running" || workflowPumping) && !runtimeStopped ? "finish-pump" : "";
   const holdControl = finishAction
     ? `<div class="pumping-actions">
         <button type="button" class="hold-to-finish" data-hold-action="${finishAction}" aria-label="长按结束本次吸乳" aria-pressed="false"><span>Hold to Finish</span></button>
         <button type="button" class="pump-pause ${state.pumpPaused ? "paused" : ""}" data-action="toggle-pump-pause" aria-label="${state.pumpPaused ? "继续吸乳" : "暂停吸乳"}" aria-pressed="${state.pumpPaused}">${state.pumpPaused ? icon("play", "继续吸乳") : '<img src="./assets/figma-755/pump-pause.svg" width="20" height="20" alt="" draggable="false" />'}</button>
       </div>`
     : "";
+  const restartControl = "";
   const startControl = screen.id === "pump-control"
     ? `<button type="button" class="start-pumping-floating" data-action="start-pump" data-kind="${kind}">Start Pumping</button>`
     : "";
@@ -1035,7 +1222,12 @@ function screenMarkup(kind) {
   const calibrationEntering = checkSheetVisible && previousCheckScreenId === null;
   const calibrationStepChanging = checkSheetVisible && previousCheckScreenId !== null && previousCheckScreenId !== screen.id;
   const calibration = calibrationMarkup(screen, { entering: calibrationEntering, stepChanging: calibrationStepChanging });
+  const inlineCalibration = checkSheetVisible && state.workflowScenario === "daily" ? calibration : "";
+  const overlayCalibration = inlineCalibration ? "" : calibration;
   const controlDialog = controlOverlayMarkup(kind, screen);
+  const runningWorkflow = runningWorkflowMarkup(screen);
+  const runtimeAlert = runtimeAlertMarkup(screen);
+  const candidateBestLevel = candidateBestLevelMarkup(screen);
   const guideExperience = guideExperienceMarkup(screen);
   const guideCozyEntry = screen.id === "training-guide"
     ? `<button type="button" class="guide-cozy-entry" data-action="ready-open-assistant" data-kind="${kind}" aria-label="打开 Cozy Assistant"><img src="${COZY_AI_LOGO}" alt="" /></button>`
@@ -1045,25 +1237,30 @@ function screenMarkup(kind) {
     ? `<span class="scanner-flashlight-state">${icon("flashlight", "闪光灯已开启")}<small>On</small></span>`
     : "";
   previousCheckScreenId = checkSheetVisible ? screen.id : null;
-  return `<div class="screen-frame ${checkSheetVisible ? "calibration-open" : ""} ${controlDialog ? "control-overlay-open" : ""} ${guideFullscreen || durationPickerOpen ? "secondary-overlay-open" : ""}" style="--content-width:${screen.width};--content-height:${screen.height}">
+  return `<div class="screen-frame ${checkSheetVisible ? "calibration-open" : ""} ${controlDialog ? "control-overlay-open" : ""} ${runtimeStopped ? "runtime-stopped" : ""} ${guideFullscreen || durationPickerOpen ? "secondary-overlay-open" : ""}" style="--content-width:${screen.width};--content-height:${screen.height}">
     <div class="screen-scroll">
       <div class="screen-canvas">
-        <img class="figma-screen" src="./assets/figma-755/${screen.image}?v=${VERSION}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
+        <img class="figma-screen" src="./assets/figma-755/${displayImage}?v=${VERSION}" width="${screen.width}" height="${screen.height}" alt="${screen.label}" draggable="false" />
         ${deviceOverlay}
         ${pumpControlButtonMask}
         ${controlSettings}
         ${flashlightState}
         ${guideCozyEntry}
+        ${inlineCalibration}
+        ${runningWorkflow}
         <div class="hotspot-layer">${hotspots}${digit}${volumes}${durationValue}</div>
       </div>
     </div>
     ${connection}
-    ${calibration}
+    ${overlayCalibration}
     ${controlDialog}
+    ${runtimeAlert}
+    ${candidateBestLevel}
     ${guideExperience}
     ${durationPicker}
     ${startControl}
     ${holdControl}
+    ${restartControl}
   </div>`;
 }
 
@@ -1079,6 +1276,12 @@ function prototypeToolbar(kind) {
     : (connected ? "V4 已绑定" : "院端独立演示");
   const status = state.sessionLogged
     ? "吸乳记录已完成"
+      : screenId === "pump-running" && state.runtimeAlert === "connection"
+      ? "设备连接中断"
+      : screenId === "pump-running" && state.runtimeAlert.startsWith("strong-")
+        ? "吸乳已暂停"
+      : screenId === "pump-running" && state.safetyStopped
+        ? "吸乳已安全终止"
     : state.pumpRunning
       ? (state.pumpPaused ? "吸乳已暂停" : "正在吸乳")
       : step >= controlStart
@@ -1140,12 +1343,13 @@ function prototypePage(kind) {
   return `<main class="prototype-page ${navigationOpen ? "navigation-open" : ""}">
     ${prototypeNavigation(kind)}
     <button type="button" class="navigation-backdrop" data-action="navigation-close" aria-label="关闭 Demo 目录"></button>
-    <div class="prototype-workspace">${prototypeToolbar(kind)}<section class="device-stage" aria-label="${kind === "hospital" ? "院端交互原型" : "居家交互原型"}">${screenMarkup(kind)}</section></div>
+    <div class="prototype-workspace">${prototypeToolbar(kind)}<section class="device-stage" aria-label="${kind === "hospital" ? "院端交互原型" : "居家交互原型"}"><div class="demo-stage-layout">${screenMarkup(kind)}${workflowDemoPanel()}</div></section></div>
   </main>`;
 }
 
 function render() {
   clearTimeout(transitionTimer);
+  clearTimeout(candidateTimer);
   cancelHold();
   const app = document.getElementById("app");
   app.innerHTML = prototypePage(ENTRY);
@@ -1170,18 +1374,60 @@ function render() {
     const screens = ENTRY === "hospital" ? hospitalScreens : homeScreens;
     const key = `${ENTRY}Step`;
     const currentId = screens[state[key]].id;
-    if (currentId === "check-initiation" && state.autoAdvanceSuppressed !== `${ENTRY}:check-initiation`) {
-      transitionTimer = setTimeout(() => setState({ [key]: screens.findIndex(screen => screen.id === "check-fit") }), 1600);
+    const autoAdvanceAllowed = state.autoAdvanceSuppressed !== `${ENTRY}:${currentId}`;
+    if (currentId === "check-initiation" && state.workflowScenario === "daily" && autoAdvanceAllowed) {
+      transitionTimer = setTimeout(() => beginWearDetection("已确认法兰方案，开始佩戴检测"), 900);
     }
-    if (currentId === "check-fit" && state.autoAdvanceSuppressed !== `${ENTRY}:check-fit`) {
-      transitionTimer = setTimeout(() => setState({ [key]: screens.findIndex(screen => screen.id === "check-fit-passed") }), 1800);
+    if (currentId === "check-fit" && autoAdvanceAllowed && !state.pumpPaused) {
+      if (state.detectionCountdown > 0) {
+        transitionTimer = setTimeout(() => setState({ detectionCountdown: state.detectionCountdown - 1 }), 1000);
+      } else {
+        transitionTimer = setTimeout(() => {
+          const result = wearResultForOutcome();
+          const passed = result.wearLeft === "normal" && result.wearRight === "normal";
+          setState({
+            [key]: screens.findIndex(screen => screen.id === "check-fit-passed"),
+            ...result
+          }, passed ? "佩戴检测通过" : "检测未通过，请根据结果调整");
+        }, 260);
+      }
     }
-    if (currentId === "check-fit-passed" && state.autoAdvanceSuppressed !== `${ENTRY}:check-fit-passed`) {
+    if (currentId === "check-fit-passed" && state.wearLeft === "normal" && state.wearRight === "normal" && autoAdvanceAllowed) {
       transitionTimer = setTimeout(() => setState({
-        [key]: screens.findIndex(screen => screen.id === "pump-running"),
-        pumpRunning: true,
-        pumpPaused: false
-      }, "Fit check passed · Pumping started"), 1000);
+        [key]: screens.findIndex(screen => screen.id === "check-comfort"),
+        comfortLevel: state.workflowScenario === "daily" && state.bestLevelSet ? state.bestLevel : state.comfortLevel
+      }), 850);
+    }
+    if (currentId === "check-comfort" && state.workflowScenario === "daily" && state.bestLevelSet && !state.commandFailure && autoAdvanceAllowed) {
+      transitionTimer = setTimeout(() => setState({
+        [key]: screens.findIndex(screen => screen.id === "check-comfort-found"),
+        pumpLevel: state.bestLevel,
+        comfortLevel: state.bestLevel,
+        continueCountdown: 3
+      }, `已应用最佳吸力 ${state.bestLevel} 档`), 900);
+    }
+    if (currentId === "check-comfort-found" && autoAdvanceAllowed) {
+      if (state.continueCountdown > 0) {
+        transitionTimer = setTimeout(() => setState({ continueCountdown: state.continueCountdown - 1 }), 1000);
+      } else {
+        transitionTimer = setTimeout(() => finishPreparation(), 220);
+      }
+    }
+    if (currentId === "pump-running" && state.candidateLevel != null && !state.candidateReady && !state.candidatePaused && state.pumpRunning && state.controlMode === "Expression" && state.deviceConnected && !state.runtimeAlert) {
+      const tickCandidate = () => {
+        if (currentScreenId() !== "pump-running" || state.candidateLevel == null || state.candidatePaused || !state.pumpRunning || state.controlMode !== "Expression" || !state.deviceConnected || state.runtimeAlert) return;
+        const candidateSeconds = Math.min(60, state.candidateSeconds + 1);
+        state = { ...state, candidateSeconds, candidateReady: candidateSeconds >= 60 };
+        saveState();
+        if (candidateSeconds >= 60) {
+          render();
+          return;
+        }
+        const status = document.querySelector(".candidate-update-card > p");
+        if (status) status.textContent = `稳定体验中 ${candidateSeconds}/60 秒`;
+        candidateTimer = setTimeout(tickCandidate, 1000);
+      };
+      candidateTimer = setTimeout(tickCandidate, 1000);
     }
   }
   if (!directNavigation && state.autoAdvanceSuppressed !== "home:connect-connecting" && ENTRY === "home" && homeScreens[state.homeStep].id === "connect-connecting") {
@@ -1207,7 +1453,7 @@ function progressForStep(kind, step) {
   return {
     ...connectionPatch,
     trainingDone: step >= screens.findIndex(screen => screen.id === "pump-control"),
-    pumpRunning: currentId === "pump-running",
+    pumpRunning: currentId === "pump-running" || pumpingWorkflowScreenIds.has(currentId),
     pumpPaused: false,
     sessionLogged: ["pump-logged", "pump-dashboard", "device-home", "insight-detail", "cozy-chat", "community"].includes(currentId)
   };
@@ -1399,7 +1645,8 @@ function handleAction(action, target) {
     case "control-close-overlay": controlOverlay = ""; render(); break;
     case "control-sheet-select-mode": {
       controlOverlay = "";
-      setState({ controlMode: target.dataset.value || "Stimulation", customModeSaved: false }, `${target.dataset.value || "Stimulation"} 模式已选择`);
+      const controlMode = target.dataset.value || "Stimulation";
+      setState({ controlMode, customModeSaved: false, ...(controlMode === "Expression" ? {} : cancelCandidatePatch()) }, `${controlMode} 模式已选择`);
       break;
     }
     case "control-select-light": setState({ controlLight: target.dataset.value || "Clear" }); break;
@@ -1433,17 +1680,57 @@ function handleAction(action, target) {
       setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-control"), trainingDone: true }, "设备教学已完成");
       break;
     }
-    case "start-pump": {
+    case "open-control-first-use": {
       const kind = target.dataset.kind || ENTRY;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
       controlOverlay = "";
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-initiation"), pumpRunning: false, pumpPaused: false }, "设备检查已自动开始");
+      setState({
+        [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-initiation"),
+        trainingDone: true,
+        workflowScenario: "first",
+        workflowSource: "start",
+        firstSetupCompleted: false,
+        flangeSlide: 0,
+        detectionCountdown: 5,
+        continueCountdown: 3,
+        wearLeft: "checking",
+        wearRight: "checking",
+        runtimeAlert: "",
+        safetyStopped: false,
+        pumpRunning: false,
+        pumpPaused: false,
+        mcvGuideOpen: false,
+        ...cancelCandidatePatch()
+      }, "设备教学已完成，请完成首次吸乳设置");
+      break;
+    }
+    case "start-pump": {
+      const kind = target.dataset.kind || ENTRY;
+      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+      const workflowScenario = state.firstSetupCompleted ? "daily" : state.workflowScenario;
+      controlOverlay = "";
+      setState({
+        [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-initiation"),
+        workflowScenario,
+        workflowSource: "start",
+        flangeSlide: 0,
+        detectionCountdown: 5,
+        continueCountdown: 3,
+        wearLeft: "checking",
+        wearRight: "checking",
+        runtimeAlert: "",
+        safetyStopped: false,
+        pumpRunning: false,
+        pumpPaused: false,
+        mcvGuideOpen: false,
+        ...cancelCandidatePatch()
+      }, workflowScenario === "daily" ? "正在自动准备本次吸乳" : "开始首次吸乳准备");
       break;
     }
     case "finish-pump": {
       const kind = target.dataset.kind || ENTRY;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false });
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-finished"), pumpRunning: false, pumpPaused: false, runtimeAlert: "", safetyStopped: false, ...cancelCandidatePatch() });
       break;
     }
     case "volume-left-up": setState({ leftVolume: Math.min(300, state.leftVolume + 10) }); break;
@@ -1586,54 +1873,123 @@ function handleAction(action, target) {
       }, "自定义模式已保存");
       break;
     }
-    case "control-select-mode": setState({
-      controlMode: target.dataset.value || "Stimulation",
-      customModeSaved: false
-    }, `${target.dataset.value || "Stimulation"} 模式已选择`); break;
-    case "control-level-down": setState({ pumpLevel: Math.max(1, state.pumpLevel - 1) }); break;
-    case "control-level-up": setState({ pumpLevel: Math.min(15, state.pumpLevel + 1) }); break;
+    case "control-select-mode": {
+      const controlMode = target.dataset.value || "Stimulation";
+      setState({ controlMode, customModeSaved: false, ...(controlMode === "Expression" ? {} : cancelCandidatePatch()) }, `${controlMode} 模式已选择`);
+      break;
+    }
+    case "control-level-down": updateRunningLevel(-1); break;
+    case "control-level-up": updateRunningLevel(1); break;
     case "open-best-level": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      if (state.controlMode !== "Expression") break;
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort") });
+      if (!["Stimulation", "Expression"].includes(state.controlMode)) break;
+      setState({
+        [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort"),
+        workflowSource: "shortcut",
+        workflowScenario: "first",
+        comfortLevel: state.pumpLevel,
+        mcvGuideOpen: false
+      });
       break;
     }
-    case "calibration-next": {
-      const kind = ENTRY === "hospital" ? "hospital" : "home";
-      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      const key = `${kind}Step`;
-      setState({ [key]: Math.min(screens.length - 1, state[key] + 1) });
+    case "flange-prev": setState({ flangeSlide: Math.max(0, state.flangeSlide - 1) }); break;
+    case "set-flange-slide": setState({ flangeSlide: Math.max(0, Math.min(flangeSlides.length - 1, Number(target.dataset.value) || 0)) }); break;
+    case "flange-next":
+      if (state.flangeSlide < flangeSlides.length - 1) setState({ flangeSlide: state.flangeSlide + 1 });
+      else beginWearDetection();
+      break;
+    case "retry-wear-detection": beginWearDetection("请保持当前姿势，重新完整检测 5 秒"); break;
+    case "open-mcv-guide": setState({ mcvGuideOpen: true }); break;
+    case "close-mcv-guide": setState({ mcvGuideOpen: false }); break;
+    case "save-best-suction": {
+      if (state.commandFailure) {
+        showToast("设备未确认档位生效，请关闭指令失败后重试");
+        break;
+      }
+      if (state.workflowScenario === "daily" && state.bestLevelSet) {
+        setState({ ...workflowStepPatch("check-comfort-found"), pumpLevel: state.bestLevel, comfortLevel: state.bestLevel, continueCountdown: 3 }, `已应用最佳吸力 ${state.bestLevel} 档`);
+        break;
+      }
+      const bestLevel = state.comfortLevel;
+      if (state.workflowSource === "shortcut") {
+        setState({ ...workflowStepPatch("pump-control"), bestLevel, bestLevelSet: true, pumpLevel: bestLevel, workflowSource: "start" }, `最佳吸力已更新为 ${bestLevel} 档`);
+      } else {
+        setState({ ...workflowStepPatch("check-comfort-found"), bestLevel, bestLevelSet: true, pumpLevel: bestLevel, continueCountdown: 3 }, `最佳吸力已保存为 ${bestLevel} 档`);
+      }
       break;
     }
+    case "workflow-continue-now": finishPreparation("已确认，吸乳继续进行"); break;
     case "calibration-close": {
       const kind = ENTRY === "hospital" ? "hospital" : "home";
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-control") });
+      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-control"), workflowSource: "start", mcvGuideOpen: false, pumpRunning: false, pumpPaused: false });
       break;
     }
-    case "calibration-test-again": {
-      const kind = ENTRY === "hospital" ? "hospital" : "home";
-      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
-      setState({ [`${kind}Step`]: screens.findIndex(screen => screen.id === "check-comfort") });
+    case "comfort-down": setState({ comfortLevel: Math.max(1, state.comfortLevel - 1), pumpLevel: Math.max(1, state.comfortLevel - 1) }); break;
+    case "comfort-up": setState({ comfortLevel: Math.min(15, state.comfortLevel + 1), pumpLevel: Math.min(15, state.comfortLevel + 1) }); break;
+    case "pump-level-down": updateRunningLevel(-1); break;
+    case "pump-level-up": updateRunningLevel(1); break;
+    case "toggle-pump-pause": {
+      const pumpPaused = !state.pumpPaused;
+      setState({ pumpPaused, ...(state.candidateLevel == null ? {} : { candidatePaused: pumpPaused, candidateSeconds: 0, candidateReady: false }) }, pumpPaused ? "吸乳已暂停" : "继续吸乳，候选档位将重新计时");
       break;
     }
-    case "calibration-use-level": {
-      const kind = ENTRY === "hospital" ? "hospital" : "home";
-      const screens = kind === "hospital" ? hospitalScreens : homeScreens;
+    case "set-workflow-scenario": {
+      const workflowScenario = target.dataset.value === "daily" ? "daily" : "first";
+      setState({ workflowScenario, firstSetupCompleted: workflowScenario === "daily", bestLevelSet: workflowScenario === "daily" ? true : state.bestLevelSet }, `已切换为${workflowScenario === "daily" ? "日常吸乳" : "首次使用"}场景`);
+      break;
+    }
+    case "set-wear-outcome": setState({ wearTestOutcome: target.dataset.value || "pass" }, "下次佩戴检测结果已更新"); break;
+    case "toggle-command-failure": setState({ commandFailure: !state.commandFailure }, state.commandFailure ? "已关闭指令失败" : "下一次设备指令将失败"); break;
+    case "set-runtime-alert": {
+      const runtimeAlert = target.dataset.value || "normal";
+      if (runtimeAlert === "normal") {
+        setState({ ...workflowStepPatch("pump-running"), runtimeAlert: "", safetyStopped: false, deviceConnected: true, wearLeft: "normal", wearRight: "normal", pumpRunning: true, pumpPaused: false, candidatePaused: false, candidateSeconds: state.candidateLevel == null ? 0 : state.candidateSeconds }, "实时状态已恢复正常");
+        break;
+      }
+      const side = runtimeAlert.endsWith("right") ? "right" : "left";
+      const wearPatch = runtimeAlert.startsWith("pressure-")
+        ? { wearLeft: "normal", wearRight: "normal" }
+        : { wearLeft: side === "left" ? "abnormal" : "normal", wearRight: side === "right" ? "abnormal" : "normal" };
+      const critical = isSafetyAlert(runtimeAlert);
+      const alertMessage = runtimeAlert.startsWith("strong-")
+        ? "检测到持续漏气，吸乳已暂停"
+        : critical
+          ? "检测到安全异常，吸乳已终止"
+          : "检测到佩戴异常，吸乳继续";
       setState({
-        [`${kind}Step`]: screens.findIndex(screen => screen.id === "pump-control"),
-        pumpLevel: state.comfortLevel,
-        bestLevelSet: true,
-        controlMode: "Expression"
-      }, `最佳档位已设为 ${state.comfortLevel}`);
+        ...workflowStepPatch("pump-running"),
+        runtimeAlert,
+        safetyStopped: critical,
+        deviceConnected: true,
+        pumpRunning: !critical,
+        pumpPaused: false,
+        ...wearPatch,
+        ...(critical ? cancelCandidatePatch() : state.candidateLevel == null ? {} : { candidatePaused: true, candidateSeconds: 0, candidateReady: false })
+      }, alertMessage);
       break;
     }
-    case "comfort-down": setState({ comfortLevel: Math.max(1, state.comfortLevel - 1) }); break;
-    case "comfort-up": setState({ comfortLevel: Math.min(15, state.comfortLevel + 1) }); break;
-    case "pump-level-down": setState({ pumpLevel: Math.max(1, state.pumpLevel - 1) }); break;
-    case "pump-level-up": setState({ pumpLevel: Math.min(15, state.pumpLevel + 1) }); break;
-    case "toggle-pump-pause": setState({ pumpPaused: !state.pumpPaused }, state.pumpPaused ? "继续吸乳" : "吸乳已暂停"); break;
+    case "resolve-runtime-alert":
+      if (state.runtimeAlert.startsWith("weak-")) setState({ runtimeAlert: "", wearLeft: "normal", wearRight: "normal", candidatePaused: false, candidateSeconds: 0 }, "佩戴已恢复，稳定计时将从头开始");
+      break;
+    case "restart-after-safety": setState({ ...workflowStepPatch("check-fit"), workflowScenario: state.bestLevelSet ? "daily" : "first", workflowSource: "start", deviceConnected: true, detectionCountdown: 5, wearLeft: "checking", wearRight: "checking", runtimeAlert: "", safetyStopped: false, pumpRunning: true, pumpPaused: false }, "吸乳已重新启动，正在检测佩戴状态"); break;
+    case "set-device-connection": {
+      if (target.dataset.value === "online") {
+        setState({ deviceConnected: true, runtimeAlert: "", safetyStopped: false, workflowScenario: state.bestLevelSet ? "daily" : "first", ...workflowStepPatch("check-fit"), detectionCountdown: 5, wearLeft: "checking", wearRight: "checking", pumpRunning: true, pumpPaused: false }, "连接已恢复，重新检测佩戴状态");
+      } else {
+        setState({ ...workflowStepPatch("pump-running"), deviceConnected: false, runtimeAlert: "connection", safetyStopped: false, wearLeft: "unknown", wearRight: "unknown", pumpRunning: false, pumpPaused: false, ...cancelCandidatePatch() }, "设备连接中断");
+      }
+      break;
+    }
+    case "reconnect-and-redetect": setState({ deviceConnected: true, runtimeAlert: "", safetyStopped: false, workflowScenario: state.bestLevelSet ? "daily" : "first", ...workflowStepPatch("check-fit"), detectionCountdown: 5, wearLeft: "checking", wearRight: "checking", pumpRunning: true, pumpPaused: false }, "连接已恢复，重新检测佩戴状态"); break;
+    case "candidate-fast-forward":
+      if (state.candidateLevel != null) setState({ candidateSeconds: 60, candidateReady: true, candidatePaused: false }, "候选档位已稳定使用 1 分钟");
+      break;
+    case "candidate-update-best":
+      if (state.candidateLevel != null) setState({ bestLevel: state.candidateLevel, bestLevelSet: true, ...cancelCandidatePatch() }, `最佳吸力已更新为 ${state.candidateLevel} 档`);
+      break;
+    case "candidate-session-only": setState(cancelCandidatePatch(), "当前档位仅用于本次吸乳"); break;
     case "open-cozy-chat": {
       const kind = target.dataset.kind || ENTRY;
       const screens = kind === "hospital" ? hospitalScreens : homeScreens;
@@ -1674,6 +2030,8 @@ function handleAction(action, target) {
       break;
     }
     case "reset":
+      clearTimeout(transitionTimer);
+      clearTimeout(candidateTimer);
       state = { ...defaults };
       controlOverlay = "";
       pendingModeSwitch = null;
