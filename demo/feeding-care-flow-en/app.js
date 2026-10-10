@@ -1,8 +1,9 @@
 const ENTRY = document.body.dataset.entry || "hospital";
-const VERSION = "0.5.20";
+const VERSION = "0.5.21";
 const LOCALE = "en";
 const STORAGE_KEY = `momcozy-figma-755-demo-${LOCALE}-v${VERSION}-${ENTRY}`;
 const PREVIOUS_STORAGE_KEYS = [
+  `momcozy-figma-755-demo-${LOCALE}-v0.5.20-${ENTRY}`,
   `momcozy-figma-755-demo-${LOCALE}-v0.5.19-${ENTRY}`
 ];
 const MAX_RECORDED_VOLUME = 300;
@@ -1146,9 +1147,9 @@ function controlOverlayMarkup(kind, screen) {
 
 function runningWearStatus(side) {
   const status = side === "left" ? state.wearLeft : state.wearRight;
-  const labels = { normal: "Normal", abnormal: "Needs Adjustment", unknown: "Unavailable", checking: "Checking" };
+  const labels = { normal: "normal", abnormal: "needs adjustment", unknown: "unavailable", checking: "checking" };
   const className = status === "normal" ? "" : status === "abnormal" ? "is-abnormal" : "is-checking";
-  return `<span class="${className}"><i></i>${side === "left" ? "LEFT" : "RIGHT"} ${labels[status] || labels.unknown}</span>`;
+  return `<span class="${className}"><i></i>${side === "left" ? "Left" : "Right"} ${labels[status] || labels.unknown}</span>`;
 }
 
 function runningWorkflowMarkup(screen) {

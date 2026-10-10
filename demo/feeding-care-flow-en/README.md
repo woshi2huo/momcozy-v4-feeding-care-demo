@@ -11,13 +11,13 @@ cd /Users/user/Documents/IoT项目/momcozy-v4-feeding-care-demo
 python3 -m http.server 4173
 ```
 
-- 院端 Demo：`http://localhost:4173/demo/feeding-care-flow-en/hospital.html?v=0.5.20`
-- 居家 Demo：`http://localhost:4173/demo/feeding-care-flow-en/home.html?v=0.5.20`
+- 院端 Demo：`http://localhost:4173/demo/feeding-care-flow-en/hospital.html?v=0.5.21`
+- 居家 Demo：`http://localhost:4173/demo/feeding-care-flow-en/home.html?v=0.5.21`
 
 ## 公网版本
 
 - 中文版：`https://woshi2huo.github.io/momcozy-v4-feeding-care-demo/demo/feeding-care-flow/hospital.html?v=0.5.19`
-- English：`https://woshi2huo.github.io/momcozy-v4-feeding-care-demo/demo/feeding-care-flow-en/hospital.html?v=0.5.20`
+- English：`https://woshi2huo.github.io/momcozy-v4-feeding-care-demo/demo/feeding-care-flow-en/hospital.html?v=0.5.21`
 
 根目录地址会直接跳转到院端 Demo，不再并排加载两个 Demo。
 
