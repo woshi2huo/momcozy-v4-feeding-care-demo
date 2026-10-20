@@ -1,0 +1,23 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="393" height="852" viewBox="0 0 393 852" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Mask group">
+<mask id="mask0_0_80" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="393" height="852">
+<rect id="Screen Background" width="393" height="852" fill="white"/>
+</mask>
+<g mask="url(#mask0_0_80)">
+<g id="Ellipse 67" opacity="0.8" filter="url(#filter0_f_0_80)">
+<circle cx="197" cy="-10" r="229" fill="url(#paint0_linear_0_80)"/>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_f_0_80" x="-192" y="-399" width="778" height="778" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="80" result="effect1_foregroundBlur_0_80"/>
+</filter>
+<linearGradient id="paint0_linear_0_80" x1="197" y1="-239" x2="197" y2="219" gradientUnits="userSpaceOnUse">
+<stop offset="0.35" stop-color="#FFC0CB"/>
+<stop offset="1" stop-color="#FFF7F8"/>
+</linearGradient>
+</defs>
+</svg>
